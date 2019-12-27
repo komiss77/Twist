@@ -1,0 +1,12 @@
+name: Twist
+main: ru.ostrov77.twist.Main
+version: 2.0
+api-version: 1.14
+author: komiss77
+depend: [Ostrov, Multiverse-Core]
+softdepend: [NoteBlockAPI]
+commands:
+   tw:
+      description: Main command
+   twist:
+      description: Main command

@@ -1,0 +1,24 @@
+# if use Vault, money_reward wil be deposit to player balance 
+money_reward: 300
+# if not use Vault, colsole dispatch this comand for every winer 
+console_command_reward_if_not_vault: say %p you win!
+# speed for all players on join from 0.1F to 0.9F
+walk_speed: 0.3F
+# Be careful! This is byte color! From 0 to 15! 
+allowed_colors:
+- BLACK
+- BLUE
+- GREEN
+- ORANGE
+- RED
+- PURPLE
+- BROWN
+- LIGHT_GRAY
+- GRAY-none
+- LIGHT_BLUE
+- LIME
+- CYAN
+- PINK
+- MAGENTA
+- YELLOW
+- WHITE
