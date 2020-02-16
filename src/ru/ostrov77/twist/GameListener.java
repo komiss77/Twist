@@ -45,7 +45,6 @@ import ru.komiss77.ApiOstrov;
 import ru.komiss77.Enums.Data;
 import ru.komiss77.Events.BsignLocalArenaClick;
 import ru.komiss77.Events.BungeeStatRecieved;
-import ru.komiss77.Objects.Oplayer;
 
 import ru.ostrov77.twist.Manager.AM;
 
@@ -344,7 +343,7 @@ System.out.println("!!!spawn");
     
     
     
-@EventHandler
+    @EventHandler
     public void onHostileSpawn(CreatureSpawnEvent e) {
         
         if ( e.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM ) {
@@ -357,7 +356,7 @@ System.out.println("!!!spawn");
     
     
     
-@EventHandler(  priority = EventPriority.NORMAL)
+    @EventHandler(  priority = EventPriority.NORMAL)
     public void onInventoryClick(InventoryClickEvent e) {
 
         if (e.getCurrentItem() != null && e.getCurrentItem().getType() != null) {
@@ -372,7 +371,7 @@ System.out.println("!!!spawn");
     }
 
         
-@EventHandler
+    @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
         if (event.getPlayer().isOp()) return;
             event.setCancelled(true);
@@ -458,25 +457,25 @@ System.out.println("!!!spawn");
     }    
     
     
-@EventHandler
+    @EventHandler
     public void strucGrow(StructureGrowEvent event) {
           event.setCancelled(true);
     }    
     
-@EventHandler
+    @EventHandler
     public void onBlockSpread(BlockSpreadEvent event) {
           event.setCancelled(true);
     }    
 
     
-@EventHandler
+    @EventHandler
     public void onWeatherChange(WeatherChangeEvent event) {
         boolean rain = event.toWeatherState();
         if(rain)
             event.setCancelled(true);
     }
  
-@EventHandler
+    @EventHandler
     public void onThunderChange(ThunderChangeEvent event) {
         boolean storm = event.toThunderState();
         if(storm)
@@ -484,7 +483,7 @@ System.out.println("!!!spawn");
     } 
 
     
-@EventHandler
+    @EventHandler
     public void onBlockFade(BlockFadeEvent event)
     {
         if(event.getBlock().getType() == Material.ICE || event.getBlock().getType() == Material.PACKED_ICE || event.getBlock().getType() == Material.SNOW || event.getBlock().getType() == Material.SNOW_BLOCK) 
@@ -493,12 +492,12 @@ System.out.println("!!!spawn");
   
 
         
-@EventHandler
-	public void onHunger(FoodLevelChangeEvent event) { event.setCancelled(true); }
+    @EventHandler
+    public void onHunger(FoodLevelChangeEvent event) { event.setCancelled(true); }
 
         
         
-@EventHandler
+    @EventHandler
     public void PlayerArmorStandManipulateEvent(PlayerArmorStandManipulateEvent e){
         if (!e.getPlayer().isOp()) e.setCancelled(true);
     }    
