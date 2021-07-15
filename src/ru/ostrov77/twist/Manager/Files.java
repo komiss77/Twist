@@ -11,6 +11,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
+import ru.komiss77.utils.LocationUtil;
 
 import ru.ostrov77.twist.Main;
 import ru.ostrov77.twist.Objects.Arena;
@@ -36,7 +37,6 @@ public class Files {
     
     
     
-    
 
     public static void load_arenas() {
         try {
@@ -47,25 +47,35 @@ public class Files {
             
             ConfigurationSection cconf = Files.customConfig.getConfigurationSection("Arenas");
             
-            cconf.getKeys(false).stream().forEach((name) -> {
+            cconf.getKeys(false).stream().forEach( (name) -> {
+                final Location arenaLobby = LocationUtil.LocFromString(cconf.getString ( name + ".arenalobby" ) , true);
+//System.out.println("+++++"+name+" arenaLobby="+arenaLobby+" !=null?"+arenaLobby!=null);
                 
-               AM.LoadArena(
-                        name, 
-                        stringToLoc ( cconf.getString ( name + ".zeropoint" ) ),
-                        stringToLoc ( cconf.getString ( name + ".arenalobby" ) ),
-                        cconf.getString(name + ".mode" ),
-                        (byte) cconf.getInt( name + ".size_x" ),
-                        (byte) cconf.getInt( name + ".size_z" ),
-                        (byte) cconf.getInt( name + ".down_id" ),
-                        (byte) cconf.getInt( name + ".show" ),
-                        (byte) cconf.getInt( name + ".difficulty" ),
-                        (byte) cconf.getInt( name + ".round" ),
-                        (byte) cconf.getInt( name + ".minPlayers" ),
-                        (byte) cconf.getInt( name + ".playersForForcestart" )
-                );
+                if (arenaLobby!=null) {
+//System.out.println("------------------------------");
+                    
+                    AM.LoadArena(
+                            name, 
+                            LocationUtil.LocFromString ( cconf.getString ( name + ".zeropoint" ) ),
+                            arenaLobby,
+                            cconf.getString(name + ".mode" ),
+                            (byte) cconf.getInt( name + ".size_x" ),
+                            (byte) cconf.getInt( name + ".size_z" ),
+                            (byte) cconf.getInt( name + ".down_id" ),
+                            (byte) cconf.getInt( name + ".show" ),
+                            (byte) cconf.getInt( name + ".difficulty" ),
+                            (byte) cconf.getInt( name + ".round" ),
+                            (byte) cconf.getInt( name + ".minPlayers" ),
+                            (byte) cconf.getInt( name + ".playersForForcestart" )
+                    );
+                }
+                
             });
+                
             
-        } catch (NullPointerException e) {}
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        }
 
     }
     
@@ -97,8 +107,8 @@ public class Files {
                 
                 arena = e.getValue();
                 
-                Files.customConfig.set( "Arenas." + arena.getName()+ ".zeropoint" , locToString(arena.getZero()) );
-                Files.customConfig.set( "Arenas." + arena.getName()+ ".arenalobby" , locToString(arena.getLobby()) );
+                Files.customConfig.set( "Arenas." + arena.getName()+ ".zeropoint" , LocationUtil.StringFromLoc(arena.getZero()) );
+                Files.customConfig.set( "Arenas." + arena.getName()+ ".arenalobby" , LocationUtil.StringFromLoc(arena.getLobby()) );
                 Files.customConfig.set( "Arenas." + arena.getName()+ ".mode", arena.getMode());
                 Files.customConfig.set( "Arenas." + arena.getName()+ ".size_x", arena.getSize_x());
                 Files.customConfig.set( "Arenas." + arena.getName()+ ".size_z", arena.getSize_z());
@@ -135,7 +145,7 @@ public class Files {
     
     
     
-    
+    /*
      public static Location stringToLoc(String s) {
         if (s != null && !s.trim().equals("")) {
             String[] astring = s.split("<>");
@@ -160,7 +170,7 @@ public class Files {
         return location == null ? "" : location.getWorld().getName() + "<>" + location.getBlockX() + "<>" + location.getBlockY() + "<>" + location.getBlockZ();
     }
 
-   
+   */
     
      public static void saveCustomYml(FileConfiguration fileconfiguration, File file) {
         try {

@@ -64,7 +64,7 @@ public static void StartScore () {
 
 
 
-  private static Scoreboard Get_score ( Arena ar ) {   
+  private static Scoreboard Get_score ( Arena ar ) {  
      
         
             final Scoreboard newScoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
@@ -91,7 +91,7 @@ public static void StartScore () {
                 //});
 
                 for (Arena arena:AM.getAllArenas().values()) { 
-                    registerNewObjective.getScore("§e" + arena.getName()+" : "+ arena.getStateAsString() ).setScore(pos); 
+                    registerNewObjective.getScore("§e" + arena.getName()+" : "+ arena.state.displayColor+arena.state.name() ).setScore(pos); 
                     pos--;
                 }
                 

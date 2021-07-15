@@ -7,6 +7,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import ru.ostrov77.twist.Main;
+import ru.ostrov77.twist.UniversalListener;
 
 
 public class Commands extends JavaPlugin {
@@ -38,6 +39,11 @@ public static boolean handleCommand(CommandSender sender, Command cmd, String s,
             case "join":
                 if (!CheckArgs (p, args, 2, false, true)) break;
                     AM.addPlayer((Player) p, args[1]);
+                break;
+            
+            case "leave":
+                AM.GlobalPlayerExit((Player) p);
+                UniversalListener.lobbyJoin(p, Bukkit.getWorld("lobby").getSpawnLocation() );
                 break;
             
                 
@@ -84,7 +90,7 @@ public static boolean handleCommand(CommandSender sender, Command cmd, String s,
                         args[5]="89";
                         p.sendMessage("§aUse down default material - GLOWSTONE (89)");
                     }
-                    if ( !net.minecraft.server.v1_15_R1.Block.getByCombinedId( Integer.valueOf(args[5])).getMaterial().isSolid()  ) {
+                    if ( !net.minecraft.world.level.block.Block.getByCombinedId( Integer.valueOf(args[5])).getMaterial().isSolid()  ) {
                         p.sendMessage("§cThe down material (bu ID) must be SOLID!!");
                         return false;
                     }
@@ -116,7 +122,7 @@ public static boolean handleCommand(CommandSender sender, Command cmd, String s,
             case "list":
                 p.sendMessage(Messages.GetMsg("arenas_list_command_result") + AM.getAllArenas().size() );
                 AM.getAllArenas().entrySet().stream().forEach((e) -> {
-                    sender.sendMessage( "§e" + e.getKey()+" :§5"+ e.getValue().getStateAsString()   );
+                    sender.sendMessage( "§e" + e.getKey()+" :§5"+ e.getValue().state.name()   );
                 });
                 break;
             

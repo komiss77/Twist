@@ -9,11 +9,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import net.minecraft.server.v1_15_R1.BlockPosition;
-import net.minecraft.server.v1_15_R1.Blocks;
-import net.minecraft.server.v1_15_R1.ChunkSection;
-import net.minecraft.server.v1_15_R1.IBlockData;
-import net.minecraft.server.v1_15_R1.WorldServer;
+import net.minecraft.core.BlockPosition;
+import net.minecraft.server.level.WorldServer;
+import net.minecraft.world.level.block.state.IBlockData;
+import net.minecraft.world.level.chunk.ChunkSection;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Color;
@@ -23,8 +22,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.craftbukkit.v1_15_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_15_R1.block.data.CraftBlockData;
+import org.bukkit.craftbukkit.v1_17_R1.CraftWorld;
+import org.bukkit.craftbukkit.v1_17_R1.block.data.CraftBlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
@@ -40,12 +39,13 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import ru.komiss77.ApiOstrov;
-import ru.komiss77.Enums.UniversalArenaState;
-import ru.komiss77.ProfileMenu.E_Stat;
+import ru.komiss77.enums.GameState;
+import ru.komiss77.enums.Stat;
 import ru.komiss77.utils.ColorUtils;
 import ru.ostrov77.twist.Main;
 import ru.ostrov77.twist.Manager.AM;
 import ru.ostrov77.twist.Manager.Messages;
+import ru.ostrov77.twist.UniversalListener;
 //import ru.ostrov77.twist.Manager.Signs;
 
 
@@ -88,13 +88,13 @@ public class Arena {
     public boolean removeFloor;
 
 
-    private Set<String> players = new HashSet();
+    public Set<String> players = new HashSet();
     public Set<String> looser = new HashSet<>();
     private ArrayList<DyeColor> colormap = new ArrayList<>();    
 
-    private RadioSongPlayer songPlayer;    
+    //private RadioSongPlayer songPlayer;    
     private static Random random;
-    private GameState state;
+    public GameState state;
     
     private final WorldServer nmsWorldServer;
     private final IBlockData ibdDataAir;
@@ -128,8 +128,8 @@ public class Arena {
         if ( minPlayers>=2 && minPlayers<=64 ) this.minPlayers = minPlayers; else this.minPlayers = 2;
         if ( playersForForcestart>=2 && playersForForcestart<minPlayers ) this.playersForForcestart = playersForForcestart; else this.playersForForcestart = 12;
 
-        ibdDataAir = net.minecraft.server.v1_15_R1.Block.getByCombinedId( 0 );
-        ibdDataDown = net.minecraft.server.v1_15_R1.Block.getByCombinedId( this.down );
+        ibdDataAir = net.minecraft.world.level.block.Block.getByCombinedId( 0 );
+        ibdDataDown = net.minecraft.world.level.block.Block.getByCombinedId( this.down );
 //System.out.println("Создана арена "+name+"   размер "+this.size_x+"*"+this.size_z+
         //" diff "+this.difficulty+" раунды "+this.maxRound+" игроки/быстро "+this.minPlayers+"/"+this.playersForForcestart);
         //if (AM.ArenaExist(name)) return; //не создаём дубль!!
@@ -154,7 +154,7 @@ public class Arena {
 
         GenerateNewFloor();
 
-        this.state=GameState.WAITING;
+        state=GameState.ОЖИДАНИЕ;
         
     }
 
@@ -165,36 +165,41 @@ public class Arena {
  
     public void resetGame() {  
 
-        this.canreset=false;
+        canreset=false;
 
-        this.arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {  p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation()); });
+        arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {  
+            UniversalListener.lobbyJoin(p, Bukkit.getWorld("lobby").getSpawnLocation());
+            //p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation()); 
+        });
 
         stopShedulers();    
 
-        this.arenaLobby.getWorld().getEntities().stream().forEach((e) -> {  try {e.remove();} catch (NullPointerException ex) {}     });
+        arenaLobby.getWorld().getEntities().stream().forEach((e) -> { 
+            if (e.getType()!=EntityType.PLAYER) e.remove();
+        });
 
         players.clear();
-        this.looser.clear();
+        looser.clear();
 
-        this.round=1;
+        round=1;
 
-        this.cdCounter=40;
-        this.prestart = 7;
-        this.ending=10;
-        this.playtime = 0;
+        cdCounter=40;
+        prestart = 7;
+        ending=10;
+        playtime = 0;
 
         BackFloor();
 
-        this.round = 1; 
-        this.curr_color = DyeColor.BLACK;
+        round = 1; 
+        curr_color = DyeColor.BLACK;
 
-        this.displayColor = true;
-        this.removeFloor = false;
+        displayColor = true;
+        removeFloor = false;
 
-        setState(GameState.WAITING);
-        this.canreset=true;
-
-        if (Main.noteblock) StopMusic();
+        state = GameState.ОЖИДАНИЕ;
+        canreset=true;
+        Main.sendBsignMysql(name, state.displayColor+state.name(), "", GameState.ОЖИДАНИЕ);
+      //  if (Main.noteblock) StopMusic();
     }
 
 
@@ -214,35 +219,35 @@ public class Arena {
  
     
     public void startCountdown() {                            //ожидание в лобби
-            if (getState() != GameState.WAITING) return;
-            state=GameState.STARTING;
+            if (state != GameState.ОЖИДАНИЕ) return;
+            state=GameState.СТАРТ;
 
             SendTitle( Messages.GetMsg("prestart_title"), Messages.GetMsg("prestart_subtitle").replace("%s", String.valueOf(cdCounter)) );
-            if (Main.noteblock) StartMusic ();
+         //   if (Main.noteblock) StartMusic ();
 
-            this.CoolDown = (new BukkitRunnable() {
+            CoolDown = (new BukkitRunnable() {
                 @Override
                 public void run() {
 
                     if (cdCounter == 0) {
-                            Arena.this.cdCounter = 40;
+                            cdCounter = 40;
                             this.cancel();
                             PrepareToStart();
 
-                    } else if ( arenaLobby.getWorld().getPlayers().size() < minPlayers ) {
+                    } else if ( players.size() < minPlayers ) {
                         SendAB(Messages.GetMsg("no_enough_players"));
-                        setState(GameState.WAITING);
-                        Arena.this.cdCounter = 40;
+                        state=GameState.ОЖИДАНИЕ;
+                        cdCounter = 40;
                         this.cancel();
 
-                    } else if ( arenaLobby.getWorld().getPlayers().size() == playersForForcestart && cdCounter > 10 ) {
+                    } else if ( players.size() == playersForForcestart && cdCounter > 10 ) {
                         SendAB(Messages.GetMsg("fast_start"));
                         cdCounter = 10;
 
                     } else if (cdCounter > 0) {
                             --cdCounter;
-                            //Signs.SignsUpdate(name, Messages.GetMsg("signs_line_3_prefix")+ arenaLobby.getWorld().getPlayers().size(), getStateAsString(), "§1"+cdCounter );
-                            Main.sendBsignChanel(name, arenaLobby.getWorld().getPlayers().size(), Messages.GetMsg("signs_line_3_prefix")+ arenaLobby.getWorld().getPlayers().size(), getStateAsString()+" §4"+cdCounter, UniversalArenaState.СТАРТ);
+                            //Signs.SignsUpdate(name, Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1"+cdCounter );
+                            Main.sendBsignChanel(name, players.size(), Messages.GetMsg("signs_line_3_prefix")+ players.size(), state.displayColor+state.name()+" §4"+cdCounter, GameState.СТАРТ);
                             if (cdCounter <= 5 && cdCounter > 0) {
                                 SendTitle("", "§b"+cdCounter+" !");
                                 SendSound(Sound.BLOCK_COMPARATOR_CLICK);
@@ -260,7 +265,7 @@ public class Arena {
             p.sendMessage( "§cYou can't start an arena - arena in game!");
             return;
          }
-         if ( state != GameState.STARTING ) {
+         if ( state != GameState.СТАРТ ) {
             p.sendMessage( "§cForce start is possible when min.player reached!");
             return;
          }
@@ -275,13 +280,13 @@ public class Arena {
 
 
     public void PrepareToStart() {   
-        if (getState() != GameState.STARTING) return;
-        setState(GameState.STARTED);
-        if (this.CoolDown != null)  this.CoolDown.cancel();
+        if (state != GameState.СТАРТ) return;
+        state=GameState.ЭКИПИРОВКА;
+        if (CoolDown != null)  CoolDown.cancel();
 
 
-            arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {  //всех игроков в мире добавля в список и на арену  
-                players.add(p.getName());
+            getPlayers().stream().forEach((p) -> {  //всех игроков в мире добавля в список и на арену  
+                //players.add(p.getName());
                 p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 5, 1), true);
                 p.getInventory().clear();
                 p.teleport( this.zero.clone().add(  (4 + random.nextInt(this.size_x-2)*4) , 1, (4 + random.nextInt(this.size_z-2)*4) ) );
@@ -336,8 +341,8 @@ public class Arena {
 
 
     public void GameProgress() {
-        if (getState() != GameState.STARTED) return;
-        setState(GameState.INGAME);
+        if (state != GameState.ЭКИПИРОВКА) return;
+        state=GameState.ИГРА;
         if (this.PreStart != null)  this.PreStart.cancel();
 
 
@@ -356,7 +361,7 @@ public class Arena {
 
                     if (displayColor) {
 
-                        if (Arena.this.RemoveFloor != null)  Arena.this.RemoveFloor.cancel();
+                        if (RemoveFloor != null)  RemoveFloor.cancel();
                         DysplayColor();                                             //показываем инфо
 
                         Bonus_spawn();
@@ -364,14 +369,14 @@ public class Arena {
 
                     } else if (removeFloor) {
 
-                        if (Arena.this.DysplayColor != null)  Arena.this.DysplayColor.cancel();
+                        if (DysplayColor != null)  DysplayColor.cancel();
 
                         MustStayOne();                                              //удаляем все вроме текущего цвета
                                                                                     //эта же функция возвращает новый пол через 3 сек
-                        Arena.this.round++;
+                        round++;
 
-        //Signs.SignsUpdate( getName(), Messages.GetMsg("signs_line_3_prefix")+ arenaLobby.getWorld().getPlayers().size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + Arena.this.round + "§7/§b§l" + Arena.this.maxRound  );
-        Main.sendBsignChanel(name, arenaLobby.getWorld().getPlayers().size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + Arena.this.round + "§7/§b§l" + Arena.this.maxRound, UniversalArenaState.ИГРА);
+        //Signs.SignsUpdate( getName(), Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + Arena.this.round + "§7/§b§l" + Arena.this.maxRound  );
+        Main.sendBsignChanel(name, players.size(), state.displayColor+state.name(), Messages.GetMsg("signs_round_prefix") + Arena.this.round + "§7/§b§l" + Arena.this.maxRound, state);
 
                     }
 
@@ -382,12 +387,12 @@ public class Arena {
                     if ( players.isEmpty() || playtime >  maxRound*show+20 && canreset) {
                         SendTitle(Messages.GetMsg("end_cause_timelinit_title"), Messages.GetMsg("end_cause_timelinit_subtitle"));
                         resetGame();
-                    } else if ( players.size()<=1 || Arena.this.round >= Arena.this.maxRound ) {
+                    } else if ( players.size()<=1 || round >= maxRound ) {
                             this.cancel();
                             endGame();
                     }
 
-                    Arena.this.playtime++;
+                    playtime++;
 
                 }
             }).runTaskTimer(Main.GetInstance(), 0L, 20L);
@@ -469,8 +474,8 @@ public class Arena {
 
 
     public void endGame() {   
-        if (state != GameState.INGAME) return;
-        state=GameState.ENDING;
+        if (state != GameState.ИГРА) return;
+        state=GameState.ФИНИШ;
         if (GameTimer != null)  GameTimer.cancel();
         if (DysplayColor != null)  DysplayColor.cancel();
         if (RemoveFloor != null)  RemoveFloor.cancel();
@@ -483,17 +488,17 @@ public class Arena {
            
            getPlayers().stream().forEach((win) -> {
                 win.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 150, 0));
-                ApiOstrov.sendTitleDirect(win, (Messages.GetMsg("you_win_title")), (Messages.GetMsg("you_win_subtitle")),5,20,5);
+                win.sendTitle( (Messages.GetMsg("you_win_title")), (Messages.GetMsg("you_win_subtitle")),5,20,5);
                 win.getWorld().playSound(win.getLocation(), "twist.win", 10, 1);
                 win.getWorld().playSound(win.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 10, 1);
                 SendMessage( "§e" + win.getName()+ (ApiOstrov.hasGroup( win.getName(), "gamer")? " §8(игроман)§2✔ ":" §8(игроман)§c✖ ") + " за игру§7: " 
                         + (ApiOstrov.hasGroup(win.getName(), "gamer")? "§a+200§7, ":"§a+150§7, ")
                         + " за монетки: " + (ApiOstrov.hasGroup( win.getName(), "gamer")? "§a"+win.getLevel()*5*2:"§a"+win.getLevel()*5) );
                 firework(win);
-                ApiOstrov.addIntStat(win, E_Stat.TW_game);
-                ApiOstrov.addIntStat(win, E_Stat.TW_win);
+                ApiOstrov.addStat(win, Stat.TW_game);
+                ApiOstrov.addStat(win, Stat.TW_win);
                 for (int m=0; m<win.getLevel();m++) {
-                    ApiOstrov.addIntStat(win, E_Stat.TW_gold);
+                    ApiOstrov.addStat(win, Stat.TW_gold);
                 }
                 win.setLevel(0);
            });
@@ -506,13 +511,17 @@ public class Arena {
                     if ( ending <=0 ) {
                          this.cancel();
                          resetGame();
+                    } else {
+                        for (Player p: getPlayers()) {
+                            UniversalListener.spawnRandomFirework(p.getLocation());
+                        }
                     }
                     --ending;
                 }
             }).runTaskTimer(Main.GetInstance(), 0L, 20L);
 
        // Signs.SignsUpdate ( getName(), "§1---", getStateAsString(), "§1 - / -" );
-        Main.sendBsignChanel(getName(), arenaLobby.getWorld().getPlayers().size(), "§1 - / -", getStateAsString(), UniversalArenaState.РЕГЕНЕРАЦИЯ);
+        Main.sendBsignChanel(getName(), players.size(), "§1 - / -", state.displayColor+state.name(), state);
 
 
     }
@@ -753,28 +762,39 @@ public class Arena {
 
         final String mat_base = ColorUtils.getItemNameBaseWithOutColor(mat.toString());
         mat = Material.valueOf(color.toString()+"_"+mat_base);
-        
+//System.out.println("FillPlotMat color="+color+"mat="+mat);        
         final BlockData data=mat.createBlockData();
         final IBlockData ibdColoredWool = ((CraftBlockData)data).getState(); //((CraftBlock)block).getNMS();
+        final IBlockData ibdAir = ((CraftBlockData)Material.AIR.createBlockData()).getState(); //((CraftBlock)block).getNMS();
+//System.out.println("ibdColoredWool "+ibdColoredWool);        
         
-        //IBlockData ibdColoredWool = net.minecraft.server.v1_15_R1.Block.getByCombinedId( mat.getId() + (c << 12) );
+        //IBlockData ibdColoredWool = net.minecraft.server.v1_16_R3.Block.getByCombinedId( mat.getId() + (c << 12) );
         //BlockPosition bps = new BlockPosition( x, y, z );
-        //net.minecraft.server.v1_15_R1.World c_world = ((CraftWorld) arenaLobby.getWorld()).getHandle();
+        //net.minecraft.server.v1_16_R3.World c_world = ((CraftWorld) arenaLobby.getWorld()).getHandle();
         //ChunkSection chunksection = new ChunkSection(bps.getY() >> 4 << 4, c_world.worldProvider.m());
         //ChunkSection chunksection = new ChunkSection(bps.getY() >> 4 << 4, ((CraftWorld) arenaLobby.getWorld()).getHandle().worldProvider.m());
 
         for (byte x_ = 0; x_ < 4; x_++) {
             for (byte z_ = 0; z_ < 4; z_++) {
 
-                final BlockPosition bps = new BlockPosition( (x+x_), y, (z+z_) );
-
-                final ChunkSection chunksection = nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).getSections()[bps.getY()>>4];
-                chunksection.setType(bps.getX() & 15, bps.getY() & 15, bps.getZ() & 15, ibdColoredWool);
-                nmsWorldServer.s(bps);
+                final BlockPosition bps = new BlockPosition( x+x_, y, z+z_ );
+//System.out.println(" bps= "+bps);        
+                net.minecraft.world.level.chunk.Chunk nmsChunk = nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );
+//System.out.println((x+x_)+":"+y+":"+(z+z_)+" nmsChunk= "+nmsChunk+" getSections="+nmsChunk.getSections().length+" need"+(y>>4)+"="+nmsChunk.getSections()[y>>4]);        
+                final ChunkSection chunksection = nmsChunk.getSections()[y>>4];
+                if (chunksection==null) {
+                    arenaLobby.getWorld().getBlockAt(x+x_, y, z+z_).setType(mat);
+                } else {
+                    chunksection.setType(bps.getX() & 15, bps.getY() & 15, bps.getZ() & 15, ibdColoredWool);
+                    nmsWorldServer.s(bps);
+                }
+                //chunksection.setType(bps.getX() & 15, bps.getY() & 15, bps.getZ() & 15, ibdColoredWool);
+                //nmsWorldServer.s(bps);
 
                 //((CraftWorld)arenaLobby.getWorld()).getHandle().getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).a( bp, ibd );
                 //((CraftWorld) arenaLobby.getWorld()).getHandle().setTypeAndData(bps, ibd, 2); //if (applyPhysics) 3 else 2
-                ((CraftWorld) arenaLobby.getWorld()).getHandle().notify( bps, ibdColoredWool, Blocks.AIR.getBlockData(),  3);
+                //((CraftWorld) arenaLobby.getWorld()).getHandle().notify( bps, ibdColoredWool, Blocks.AIR.getBlockData(),  3);
+                ((CraftWorld) arenaLobby.getWorld()).getHandle().notify( bps, ibdColoredWool, ibdAir,  3);
 
             }
         }
@@ -789,10 +809,10 @@ public class Arena {
         int y = this.zero.getBlockY();
         int z = this.zero.getBlockZ() + plot_z * 4;
 
-        //IBlockData ibd = net.minecraft.server.v1_15_R1.Block.getByCombinedId( 0 );
+        //IBlockData ibd = net.minecraft.server.v1_16_R3.Block.getByCombinedId( 0 );
 
         //BlockPosition bps = new BlockPosition( x, y, z );
-        //net.minecraft.server.v1_15_R1.World c_world = ((CraftWorld) arenaLobby.getWorld()).getHandle();
+        //net.minecraft.server.v1_16_R3.World c_world = ((CraftWorld) arenaLobby.getWorld()).getHandle();
         //ChunkSection chunksection = new ChunkSection(bps.getY() >> 4 << 4, c_world.worldProvider.m());
         //ChunkSection chunksection = new ChunkSection(bps.getY() >> 4 << 4, ((CraftWorld) arenaLobby.getWorld()).getHandle().worldProvider.m());
 
@@ -820,7 +840,7 @@ public class Arena {
 
  //  private void UpdateChunks() {
        
-       // this.arenaLobby.getWorld().getPlayers().stream().forEach(p -> this.arenaLobby.getWorld().getPlayers().stream().forEach(p2 -> p.hidePlayer(p2)));
+       // this.players.stream().forEach(p -> this.players.stream().forEach(p2 -> p.hidePlayer(p2)));
        
       //  this.chunks.stream().forEach(ch_coord -> 
     //            this.arenaLobby.getWorld().refreshChunk( Integer.valueOf(ch_coord.split(":")[0]), Integer.valueOf(ch_coord.split(":")[1]) )
@@ -829,7 +849,7 @@ public class Arena {
       //  if (!Main.shutdown) {
       //      new BukkitRunnable() {
      //           public void run() {
-      //              Arena.this.arenaLobby.getWorld().getPlayers().stream().forEach(p -> Arena.this.arenaLobby.getWorld().getPlayers().stream().forEach(p2 -> p.showPlayer(p2)));
+      //              Arena.this.players.stream().forEach(p -> Arena.this.players.stream().forEach(p2 -> p.showPlayer(p2)));
       //          }
      //       }.runTaskLater((Plugin)Main.GetInstance(), 15L);
      //   }
@@ -934,12 +954,12 @@ public class Arena {
         int z = this.zero.getBlockZ() + plot_z * 4; //координата блока Z на углу плота
 
 
-        //net.minecraft.server.v1_15_R1.World world = ( (CraftWorld) arenaLobby.getWorld() ).getHandle(); //берёт NMS мир
-        //IBlockData ibd = net.minecraft.server.v1_15_R1.Block.getByCombinedId( this.down );     //создаёт ibd код для GLOWSTONE
+        //net.minecraft.server.v1_16_R3.World world = ( (CraftWorld) arenaLobby.getWorld() ).getHandle(); //берёт NMS мир
+        //IBlockData ibd = net.minecraft.server.v1_16_R3.Block.getByCombinedId( this.down );     //создаёт ibd код для GLOWSTONE
 
         for (byte x_ = 0; x_ < 4; x_++) {
             for (byte z_ = 0; z_ < 4; z_++) {
-                //net.minecraft.server.v1_15_R1.Chunk c = c_world.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );   //берёт NMS чанк
+                //net.minecraft.server.v1_16_R3.Chunk c = c_world.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );   //берёт NMS чанк
                 //nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).a( new BlockPosition( (x+x_), y, (z+z_) ) , ibdDataDown );                                    //вносит в него ibd по blockposition
                 nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).setType(new BlockPosition( (x+x_), y, (z+z_) ) , ibdDataDown , false, false );                                    //вносит в него ibd по blockposition
 
@@ -957,12 +977,12 @@ public class Arena {
         int z = this.zero.getBlockZ() + plot_z * 4;
 
 
-        //net.minecraft.server.v1_15_R1.World world = ( (CraftWorld) arenaLobby.getWorld() ).getHandle(); //берёт NMS мир
-        //IBlockData ibd = net.minecraft.server.v1_15_R1.Block.getByCombinedId( Material.AIR.getId() );     //создаёт ibd код для GLOWSTONE
+        //net.minecraft.server.v1_16_R3.World world = ( (CraftWorld) arenaLobby.getWorld() ).getHandle(); //берёт NMS мир
+        //IBlockData ibd = net.minecraft.server.v1_16_R3.Block.getByCombinedId( Material.AIR.getId() );     //создаёт ibd код для GLOWSTONE
 
         for (byte x_ = 0; x_ < 4; x_++) {
             for (byte z_ = 0; z_ < 4; z_++) {
-                //net.minecraft.server.v1_15_R1.Chunk c = c_world.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );   //берёт NMS чанк
+                //net.minecraft.server.v1_16_R3.Chunk c = c_world.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );   //берёт NMS чанк
                 //nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).a( new BlockPosition( (x+x_), y, (z+z_) ) , ibdDataAir );                                    //вносит в него ibd по blockposition
                 nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).setType(new BlockPosition( (x+x_), y, (z+z_) ) , ibdDataAir , false, false );                                    //вносит в него ibd по blockposition
             }
@@ -992,13 +1012,19 @@ public class Arena {
     public void addPlayers(Player p) {
         if ( IsJonable() ) {
             p.teleport(getLobby());
-            if ( arenaLobby.getWorld().getPlayers().size() <= minPlayers ) 
-                        SendAB ( Messages.GetMsg("players_need_for_start").replace("%n", String.valueOf( minPlayers-arenaLobby.getWorld().getPlayers().size() )) ); 
-            Main.GiveExitItem(p);
+            players.add(p.getName());
+            if ( players.size() < minPlayers ) {
+                SendAB ( Messages.GetMsg("players_need_for_start").replace("%n", String.valueOf( minPlayers-players.size() )) ); 
+            }
+            
+            //p.getInventory().clear();
+            p.getInventory().setItem(0, new ItemStack(Material.AIR));
+            p.getInventory().setItem(7, new ItemStack(Material.AIR));
+            p.getInventory().setItem(8, UniversalListener.leaveArena.clone());
             p.updateInventory();
-            //Signs.SignsUpdate(name, Messages.GetMsg("signs_line_3_prefix")+ arenaLobby.getWorld().getPlayers().size(), getStateAsString(), "§1 - / -" );
-            Main.sendBsignChanel(name, arenaLobby.getWorld().getPlayers().size(), Messages.GetMsg("signs_line_3_prefix")+ arenaLobby.getWorld().getPlayers().size(), getStateAsString(), UniversalArenaState.ОЖИДАНИЕ);
-            if ( arenaLobby.getWorld().getPlayers().size()>=minPlayers ) startCountdown();
+            //Signs.SignsUpdate(name, Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1 - / -" );
+            Main.sendBsignChanel(name, players.size(), Messages.GetMsg("signs_line_3_prefix")+ players.size(), state.displayColor+state.name(), GameState.ОЖИДАНИЕ);
+            if ( players.size()>=minPlayers ) startCountdown();
         }
     }
 
@@ -1008,26 +1034,26 @@ public class Arena {
 
 
         if ( IsJonable() ) {                //если ожидание или первый таёмер, т.е. не внесён в players
-            if ( players.contains(p.getName()) ) players.remove(p.getName());         //перестраховка
-                if (arenaLobby.getWorld().getPlayers().size() < minPlayers && this.CoolDown != null) {      //если был запущен таймер
+            players.remove(p.getName());         //перестраховка
+                if (players.size() < minPlayers && this.CoolDown != null) {      //если был запущен таймер
                     this.CoolDown.cancel();
                     Arena.this.cdCounter = 40;
                     SendAB(Messages.GetMsg("no_enough_players"));
-                    setState(GameState.WAITING);
+                    state=GameState.ОЖИДАНИЕ;
                 }
                 //new ActionbarTitleObject (Messages.GetMsg("arena_exit")).send(p);
-                ApiOstrov.sendActionBarDirect(p, Messages.GetMsg("arena_exit"));
-                p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
-                //Signs.SignsUpdate( getName(),Messages.GetMsg("signs_line_3_prefix")+ arenaLobby.getWorld().getPlayers().size(), getStateAsString(), "§1 - / -" );
-                Main.sendBsignChanel(name, arenaLobby.getWorld().getPlayers().size(), Messages.GetMsg("signs_line_3_prefix")+ arenaLobby.getWorld().getPlayers().size(), getStateAsString(),  UniversalArenaState.ОЖИДАНИЕ);
+                //ApiOstrov.sendActionBarDirect(p, Messages.GetMsg("arena_exit"));
+                //p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
+                //Signs.SignsUpdate( getName(),Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1 - / -" );
+                Main.sendBsignChanel(name, players.size(), Messages.GetMsg("signs_line_3_prefix")+ players.size(), state.displayColor+state.name(), state);
 
         } else {                                            //выход во время игры-возможно только через отключение
-                if ( players.contains(p.getName()) ) {
-                players.remove(p.getName());
+            if ( players.remove(p.getName()) ) {
+               // players.remove(p.getName());
                 //if ( players.size() ==1 ) endGame();    
                 //Signs.SignsUpdate( getName(),  Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + this.round + "§7/§b§l" + this.maxRound  );
-                Main.sendBsignChanel(name, arenaLobby.getWorld().getPlayers().size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + this.round + "§7/§b§l" + this.maxRound,  UniversalArenaState.ИГРА);
-                }
+                Main.sendBsignChanel(name, players.size(), state.displayColor+state.name(), Messages.GetMsg("signs_round_prefix") + this.round + "§7/§b§l" + this.maxRound,  state);
+            }
         }
 
 
@@ -1052,20 +1078,21 @@ public class Arena {
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        if ( p.getLocation().getBlockY() < (zero.getBlockY()) && state==GameState.INGAME ) { //фикс от случайного спавна на арене
+                        if ( p.getLocation().getBlockY() < (zero.getBlockY()) && state==GameState.ИГРА ) { //фикс от случайного спавна на арене
                             for (byte z= 0; z<=6; z++) {
                                 PigZombie pz = p.getWorld().spawn( p.getLocation().clone().add( z-3,1,z-3), PigZombie.class);
                                 pz.setAngry(true);
                                 pz.setCustomName(Messages.GetMsg("pig_zombie_name"));
                                 pz.getEquipment().setItemInMainHand(new ItemStack(Material.CARROT, 1));
+                                pz.setTarget(p);
                             }
                         }
                     }
                 }.runTaskLater(Main.GetInstance(), 2L); 
         }
-        ApiOstrov.sendTitleDirect(p, Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
-        ApiOstrov.addIntStat(p, E_Stat.TW_game);
-        ApiOstrov.addIntStat(p, E_Stat.TW_loose);
+        p.sendTitle( Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
+        ApiOstrov.addStat(p, Stat.TW_game);
+        ApiOstrov.addStat(p, Stat.TW_loose);
 
     }
 
@@ -1120,7 +1147,7 @@ public class Arena {
     }
     
     public boolean IsJonable() {
-        return ( state == GameState.WAITING || state == GameState.STARTING );
+        return ( state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ );
     }
     
 
@@ -1131,52 +1158,26 @@ public class Arena {
         return this.name;
     }
 
-    public GameState getState() {
-        return this.state;
-    }
-    
-    public void setState(GameState gamestate) {
-        this.state = gamestate;
-//        Signs.SignsUpdate( getName(),  Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + this.round + "§7/§b§l" + this.maxRound  );
-//        Main.Send_arena_info_to_lobby(name, getStateAsString(), Messages.GetMsg("signs_round_prefix") + this.round + "§7/§b§l" + this.maxRound, 14);
 
-    }
-   
-    public String getStateAsString() {
-        switch (this.state) {
-            case WAITING:
-                return Messages.GetMsg("WAITING");
-            case STARTING:
-                return Messages.GetMsg("STARTING");
-            case STARTED:
-                return Messages.GetMsg("STARTED");
-            case INGAME:
-                return Messages.GetMsg("INGAME");
-            case ENDING:
-                return Messages.GetMsg("ENDING");
-            default:
-                return "";
-        }
-    }
 
    
     public String getScoreTimer() {
-        switch (getState()) {
-            case WAITING:
-                return Messages.GetMsg("score_waiting").replace("%s", String.valueOf(this.minPlayers-this.arenaLobby.getWorld().getPlayers().size()));
-            case STARTING:
+        switch (state) {
+            case ОЖИДАНИЕ:
+                return Messages.GetMsg("score_waiting").replace("%s", String.valueOf(this.minPlayers-this.players.size()));
+            case СТАРТ:
                 return Messages.GetMsg("score_cooldown").replace("%s", String.valueOf(this.cdCounter));
-            case STARTED:
+            case ЭКИПИРОВКА:
                 return Messages.GetMsg("score_prestart");
-            case INGAME:
+            case ИГРА:
                 return Messages.GetMsg("score_ingame").replaceAll("%r", String.valueOf(this.round)).replaceAll("%m", String.valueOf(this.maxRound)).replace("%t", Main.getTime(this.playtime) );
             default:
-                return getStateAsString();
+                return state.displayColor+state.name();
         }
    }
    
     public String GetScoreStatus (Player p) {
-        if (state == GameState.WAITING || state == GameState.STARTING ) {
+        if (state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ ) {
             return "§f"+p.getName();
         } else if (players.contains(p.getName())) {
             //return "§2§o✔ "+ColorUtils.DyeToString(curr_color).substring(0,2)+p.getName();
@@ -1315,7 +1316,7 @@ public class Arena {
 
     public void SendTitle(String t, String st) {
             arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
-                ApiOstrov.sendTitleDirect(p, t, st, 2,10,2);
+                p.sendTitle( t, st, 2,10,2);
     //(new TitleObject ((t), TitleObject.TitleType.TITLE)).setFadeIn(20).setStay(20).setFadeOut(5).send(p);
     //(new TitleObject ((st), TitleObject.TitleType.SUBTITLE)).setFadeIn(20).setStay(20).setFadeOut(5).send(p);
             });
@@ -1355,7 +1356,7 @@ public class Arena {
         }
 
 
-
+/*
 
      private void StartMusic () {
 
@@ -1374,7 +1375,7 @@ public class Arena {
 
                 songPlayer.setPlaying(true);
 
-                arenaLobby.getWorld().getPlayers().stream().forEach((p) -> { songPlayer.addPlayer(p); });
+                players.stream().forEach((p) -> { songPlayer.addPlayer(p); });
 
                 songPlayer.setVolume((byte) 60);
                 songPlayer.setFadeStart((byte) 25);
@@ -1393,7 +1394,7 @@ public class Arena {
         } catch (NullPointerException e){}
     }
 
-   
+   */
  
 
 

@@ -2,11 +2,9 @@ package ru.ostrov77.twist;
 
 
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockGrowEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
@@ -14,11 +12,7 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
-import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.weather.ThunderChangeEvent;
 import org.bukkit.event.weather.WeatherChangeEvent;
@@ -32,19 +26,11 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerPickupItemEvent;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
-
-import ru.komiss77.ApiOstrov;
-import ru.komiss77.Enums.Data;
-import ru.komiss77.Events.BsignLocalArenaClick;
-import ru.komiss77.Events.BungeeStatRecieved;
 
 import ru.ostrov77.twist.Manager.AM;
 
@@ -56,7 +42,7 @@ import ru.ostrov77.twist.Manager.AM;
 public class GameListener implements Listener {
  
     
-    
+  /*  
 @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent e) {
         
@@ -123,8 +109,11 @@ public class GameListener implements Listener {
                 
                 case SLIME_BALL:
                     e.setCancelled(true);
-                    if (AM.isLooser(e.getPlayer().getName())) e.getPlayer().teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
-                        else AM.GlobalPlayerExit (e.getPlayer());
+                    if (AM.isLooser(e.getPlayer().getName())) {
+                        e.getPlayer().teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
+                    } else {
+                        AM.GlobalPlayerExit (e.getPlayer());
+                    }
                         //Arenas.GlobalPlayerExit (e.getPlayer());
                     break;
                     
@@ -140,28 +129,32 @@ public class GameListener implements Listener {
         
 
         }
-    }
+    }*/
                
 
 
-@EventHandler ( priority = EventPriority.HIGH )
+    @EventHandler ( priority = EventPriority.HIGH )
     public void EntityDamageByEntityEvent (EntityDamageByEntityEvent e){
         if(! (e.getEntity() instanceof Player) ) return;
         Player p = (Player) e.getEntity();
-    
-            if ( e.getDamager().getType() == EntityType.PIG_ZOMBIE) {
+        if (AM.getPlayersArena(p)==null) return;
+        
+            if ( e.getDamager().getType() == EntityType.ZOMBIFIED_PIGLIN) {
                 e.setDamage( e.getDamage()/1.5);                                                    //чтобы мучался дольше
         
                         if ( p.getHealth() - e.getDamage() <= 0 ) {                              // если  гибель 
                             e.setCancelled(true);
                             e.setDamage(0);
-                            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 10, 1), true);
-                            JoinPlayer(p);
-                            
-                                if ( AM.getArenaByWorld( p.getWorld().getName())!= null && !AM.getArenaByWorld( p.getWorld().getName()).IsJonable() )   //если на арене игрока еще игра, в лобби игры, если нет-в глобальное лобби
-                                    p.teleport(AM.getArenaByWorld( p.getWorld().getName()).getLobby());
+                            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 10, 1));
+                            UniversalListener.spectatorPrepare(p);
+                            //JoinPlayer(p);
+                            if ( AM.getPlayersArena(p)!= null) {
+                                AM.getPlayersArena(p).PlayerExit(p);
+                            }
+                             //   if ( AM.getArenaByWorld( p.getWorld().getName())!= null && !AM.getArenaByWorld( p.getWorld().getName()).IsJonable() )   //если на арене игрока еще игра, в лобби игры, если нет-в глобальное лобби
+                            //        p.teleport(AM.getArenaByWorld( p.getWorld().getName()).getLobby());
                                 
-                                else p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
+                           //     else p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
                         }
                         
                         
@@ -176,7 +169,7 @@ public class GameListener implements Listener {
      
     
     
-@EventHandler
+    @EventHandler
         public void onEntityDamage(EntityDamageEvent e) { 
         
             if ( !(e.getEntity() instanceof Player) ) { 
@@ -185,7 +178,7 @@ public class GameListener implements Listener {
             }
             
             final Player p = (Player) e.getEntity();
-            
+            if (AM.getPlayersArena(p)==null) return;
             
             switch (e.getCause()) {
                 
@@ -195,7 +188,7 @@ public class GameListener implements Listener {
                     } else { 
                         e.setDamage(0);
                         p.setFallDistance(0);
-                        p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation()); 
+                        p.teleport(p.getWorld().getSpawnLocation()); 
                     }
                     break;
                     
@@ -205,7 +198,7 @@ public class GameListener implements Listener {
                     break;
                     
                 case ENTITY_ATTACK:
-                    if ( e.getEntityType() == EntityType.PIG_ZOMBIE ) {  //напали на хрюшу
+                    if ( e.getEntityType() == EntityType.ZOMBIFIED_PIGLIN ) {  //напали на хрюшу
                         e.setCancelled(true);
                         e.setDamage(0);
                     }  
@@ -220,16 +213,16 @@ public class GameListener implements Listener {
 
         
         
-        
+     /*   
     
-@EventHandler(priority = EventPriority.MONITOR)
-    public void ArenaJoin(final BungeeStatRecieved e) {  
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void ArenaJoin(final BungeeDataRecieved e) {  
         //final Oplayer op = ru.komiss77.Managers.PM.getOplayer(e.getPlayer().getName());
 //System.out.println( "ArenaJoinEvent ->"+e.getOplayer().getBungeeData(Data.WANT_ARENA_JOIN) );
         new BukkitRunnable() {
             @Override
             public void run() {
-                AM.addPlayer(e.getPlayer(), e.getOplayer().getBungeeData(Data.WANT_ARENA_JOIN));
+                AM.addPlayer(e.getPlayer(), e.getOplayer().getDataString(Data.WANT_ARENA_JOIN));
             }
         }.runTaskLater(Main.instance, 10);
 
@@ -241,10 +234,10 @@ public class GameListener implements Listener {
 //System.out.println(" ---- BsignLocalArenaClick --- "+e.player.getName()+" "+e.arenaName);
          AM.addPlayer(e.player, e.arenaName );
     }
+    */    
         
         
-        
-@EventHandler
+    @EventHandler
     public void onPlayerMove (PlayerMoveEvent e) { 
         
         if (e.getFrom().getBlockX()==e.getTo().getBlockX() && e.getFrom().getBlockY()==e.getTo().getBlockY() && e.getFrom().getBlockZ()==e.getTo().getBlockZ()  ) return;
@@ -266,7 +259,9 @@ public class GameListener implements Listener {
                                     //return;
 //                  }
              
-             } else if ( AM.isLooserLock(e.getPlayer()) ) e.setCancelled(true);  //не давать бегать род полом
+             } else if ( AM.isLooserLock(e.getPlayer()) ) {
+                 e.setTo(e.getFrom());
+             }  //не давать бегать род полом
 
     
     }
@@ -294,10 +289,10 @@ System.out.println("!!!spawn");
     
     
     
-@EventHandler (ignoreCancelled = true)
-    public void sugarPickupEventSpeed(PlayerPickupItemEvent e) {
-        
-            //Player p = e.getPlayer();
+    @EventHandler (ignoreCancelled = true)
+    public void sugarPickupEventSpeed(EntityPickupItemEvent e) {
+        if (e.getEntityType()!=EntityType.PLAYER) return;
+        Player p = Bukkit.getPlayer(e.getEntity().getName());
 
         //if (e.getItem().getItemStack()!=null && e.getItem().getItemStack().hasItemMeta() && e.getItem().getItemStack().getItemMeta().)    
             switch (e.getItem().getItemStack().getType()) {
@@ -308,12 +303,12 @@ System.out.println("!!!spawn");
                     if (e.getItem().isGlowing()) return;
                     Pickup_efect(e.getItem());
                     e.getItem().setGlowing(true);
-                    if  ( AM.isInGame(e.getPlayer()) ) {
+                    if  ( AM.isInGame(p) ) {
                         //p.playSound(p.getLocation(), Sound.ENTITY_CHICKEN_EGG, 20F, 1F);
                         //e.getPlayer().getWorld().playSound(e.getPlayer().getLocation(), "twist.bonus_pickup", 10, 1);
-                        e.getPlayer().getWorld().playSound(e.getPlayer().getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 10, 1);
-                        e.getPlayer().getWorld().playEffect(e.getPlayer().getLocation(), Effect.BOW_FIRE, 5);
-                        e.getPlayer().setLevel(e.getPlayer().getLevel()+1);
+                        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 10, 1);
+                        p.getWorld().playEffect(p.getLocation(), Effect.BOW_FIRE, 5);
+                        p.setLevel(p.getLevel()+1);
                         
                     }
                     break;
@@ -321,7 +316,7 @@ System.out.println("!!!spawn");
                 default:
                     e.setCancelled(true);
                     e.getItem().remove();
-                    e.getPlayer().getWorld().playSound(e.getPlayer().getLocation(), Sound.ENTITY_CHICKEN_EGG, 1.0F, 9.9F);
+                    p.getWorld().playSound(p.getLocation(), Sound.ENTITY_CHICKEN_EGG, 1.0F, 9.9F);
                     break;
                     
                 
@@ -355,7 +350,7 @@ System.out.println("!!!spawn");
 
     
     
-    
+    /*
     @EventHandler(  priority = EventPriority.NORMAL)
     public void onInventoryClick(InventoryClickEvent e) {
 
@@ -368,12 +363,12 @@ System.out.println("!!!spawn");
             }
             
         }
-    }
+    }*/
 
         
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
-        if (event.getPlayer().isOp()) return;
+        if ( event.getPlayer().isOp() || AM.getPlayersArena(event.getPlayer())==null) return;
             event.setCancelled(true);
             event.getItemDrop().remove();
             ItemStack droped = event.getPlayer().getItemInHand().clone();
@@ -399,7 +394,7 @@ System.out.println("!!!spawn");
         
     
     
-    
+   /* 
         
 @EventHandler
     public void WorldChange (PlayerChangedWorldEvent e) {
@@ -408,7 +403,7 @@ System.out.println("!!!spawn");
             e.getPlayer().teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
         }
     }
-
+*/
 
 
     
@@ -417,7 +412,7 @@ System.out.println("!!!spawn");
         
     
     
-@EventHandler
+    @EventHandler
     public void onPlayerSwapoffHand(PlayerSwapHandItemsEvent event) {
         if (event.getOffHandItem() != null  )  event.setCancelled(true);
     }    

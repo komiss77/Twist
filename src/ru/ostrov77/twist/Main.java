@@ -16,13 +16,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import ru.komiss77.ApiOstrov;
-import ru.komiss77.Enums.UniversalArenaState;
+import ru.komiss77.enums.GameState;
 import ru.ostrov77.twist.Manager.AM;
 import ru.ostrov77.twist.Manager.Commands;
 import ru.ostrov77.twist.Manager.Files;
 import ru.ostrov77.twist.Manager.Messages;
 import ru.ostrov77.twist.Manager.ScoreBoard;
-//import ru.ostrov77.twist.Manager.Signs;
 
 
 
@@ -67,6 +66,7 @@ public class Main extends JavaPlugin implements Listener {
 
                 
         Bukkit.getServer().getPluginManager().registerEvents(new GameListener(), this);
+        Bukkit.getServer().getPluginManager().registerEvents(new UniversalListener(this), this);
         //Bukkit.getServer().getPluginManager().registerEvents(new Signs(), this);
 
         Bukkit.getLogger().info("Twist ready!");
@@ -87,15 +87,13 @@ public class Main extends JavaPlugin implements Listener {
             AM.getAllArenas().keySet().stream().forEach((arenaName) -> {
             ApiOstrov.sendArenaData(
                     arenaName,
+                    GameState.ВЫКЛЮЧЕНА,
                     "§4█████████",
                     "§2§l§oTWIST",
                     "§cПерезапуск...",
                     "§4█████████",
                     "",
-                    0,
-                    UniversalArenaState.ВЫКЛЮЧЕНА,
-                    true,
-                    false
+                    0
             );
               /*  Bsign.Send_data(true, false, 0, ar,
                         "§4█████████",
@@ -127,36 +125,32 @@ public class Main extends JavaPlugin implements Listener {
     
     
     
-    public static void sendBsignMysql(final String name, final String line2, final String line3, final UniversalArenaState state) {
+    public static void sendBsignMysql(final String name, final String line2, final String line3, final GameState state) {
         ////////////////////////////////////////////////////////////////////////////////
             ApiOstrov.sendArenaData(
                     name,
+                    state,
                     "§2§l§oTWIST",
                     "§5"+name,
                     line2,
                     line3,
                     "",
-                    0,
-                    state,
-                    true,
-                    true
+                    0
             );
         ////////////////////////////////////////////////////////////////////////////////
 
     }
-    public static void sendBsignChanel(final String name, final int players, final String line2, final String line3, final UniversalArenaState state) {
+    public static void sendBsignChanel(final String name, final int players, final String line2, final String line3, final GameState state) {
         ////////////////////////////////////////////////////////////////////////////////
             ApiOstrov.sendArenaData(
                     name,
+                    state,
                     "§2§l§oTWIST",
                     "§5"+name,
                     line2,
                     line3,
                     "",
-                    players,
-                    state,
-                    false,
-                    true
+                    players
             );
         ////////////////////////////////////////////////////////////////////////////////
 
@@ -287,15 +281,6 @@ public static String getTime(final long n) {
 
 
 
-public static void GiveExitItem(Player p) {
-        p.getInventory().clear();
-        ItemStack leaveGame = new ItemStack(Material.SLIME_BALL, 1);
-        ItemMeta im = leaveGame.getItemMeta();
-        im.setDisplayName(Messages.GetMsg("exit_item_name"));
-        leaveGame.setItemMeta(im);
-        p.getInventory().setItem(8, leaveGame);
-        p.updateInventory();
-    }    
   
 
 

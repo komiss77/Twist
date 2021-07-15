@@ -11,7 +11,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import ru.komiss77.Enums.UniversalArenaState;
+import ru.komiss77.enums.GameState;
 
 
 import ru.ostrov77.twist.Main;
@@ -24,7 +24,7 @@ import ru.ostrov77.twist.Objects.Arena;
 
 public class AM {
 
-    private static HashMap <String, Arena> arenas;
+    public static HashMap <String, Arena> arenas;
     public static ItemStack bonus;
     public static ItemStack no_mat;
     
@@ -100,7 +100,7 @@ public static void MySign() {
 
 
 
-public static void createArena( String name, Location player_pos, String mode, byte size_x, byte size_z, byte down  ) {
+    public static void createArena( String name, Location player_pos, String mode, byte size_x, byte size_z, byte down  ) {
 
                                 // имя  коорд.угла  коорд.лобби   матер.  размер x * z4 id низ  показ   сложность  раунды  мин.игроков  быстр.старт
         Arena arena = new Arena ( name, player_pos, player_pos,   mode,  size_x, size_z, down,  (byte)0, (byte)0, (byte)0,   (byte)0,    (byte)0 );
@@ -110,11 +110,12 @@ public static void createArena( String name, Location player_pos, String mode, b
 
 
     
-public static void LoadArena(String name, Location zero, Location arenaLobby, String mode, byte size_x, byte size_z, byte down,  byte show, byte diff, byte round, byte minpl, byte force ) {
+    public static void LoadArena(String name, Location zero, Location arenaLobby, String mode, byte size_x, byte size_z, byte down,  byte show, byte diff, byte round, byte minpl, byte force ) {
                                 // имя  коорд.угла  коорд.лобби   матер.  размер x * z4 id низ показ сложность  раунды  мин.игроков  быстр.старт
         Arena arena = new Arena ( name,  zero,       arenaLobby,   mode,  size_x, size_z, down, show, diff,    round,    minpl,       force );
         arenas.put(name,arena);
-        Main.sendBsignMysql(name, arena.getStateAsString(), "", UniversalArenaState.ОЖИДАНИЕ);
+//System.out.println("+++++ LoadArena"+name+" arena="+arena);
+        
     }
     
 
@@ -228,15 +229,15 @@ public static boolean isLooserLock(Player p) {
     
     
     
-public static void GlobalPlayerExit(Player p ) {
-    arenas.entrySet().stream().forEach((e) -> {  e.getValue().PlayerExit(p); });
+    public static void GlobalPlayerExit(Player p ) {
+        arenas.values().stream().forEach( (a) -> {  a.PlayerExit(p); });
     }
 
 
 
 public static Arena getPlayersArena(Player p) {
-    for (Entry <String, Arena> e : arenas.entrySet()) {
-        if (e.getValue().IsInGame(p)) return e.getValue();
+    for (Arena a : arenas.values()) {
+        if (a.IsInGame(p)) return a;
     }
     return null;
     }
