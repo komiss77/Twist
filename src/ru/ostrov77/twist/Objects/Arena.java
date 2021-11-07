@@ -1,9 +1,5 @@
 package ru.ostrov77.twist.Objects;
 
-import com.xxmicloxx.NoteBlockAPI.NBSDecoder;
-import com.xxmicloxx.NoteBlockAPI.RadioSongPlayer;
-import com.xxmicloxx.NoteBlockAPI.Song;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +38,7 @@ import ru.komiss77.ApiOstrov;
 import ru.komiss77.enums.GameState;
 import ru.komiss77.enums.Stat;
 import ru.komiss77.utils.ColorUtils;
+import ru.komiss77.utils.DonatEffect;
 import ru.ostrov77.twist.Main;
 import ru.ostrov77.twist.Manager.AM;
 import ru.ostrov77.twist.Manager.Messages;
@@ -94,7 +91,7 @@ public class Arena {
 
     //private RadioSongPlayer songPlayer;    
     private static Random random;
-    public GameState state;
+    public GameState state; //ОЖИДАНИЕ СТАРТ ЭКИПИРОВКА ИГРА ФИНИШ
     
     private final WorldServer nmsWorldServer;
     private final IBlockData ibdDataAir;
@@ -106,10 +103,10 @@ public class Arena {
         
         
         this.name = name;
-        try {
+        //try {
             this.arenaLobby = arenaLobby;
             this.zero = zero;
-        } catch (NullPointerException ex) {}
+        //} catch (NullPointerException ex) {}
         
         nmsWorldServer = ((CraftWorld) arenaLobby.getWorld()).getHandle();
         
@@ -155,7 +152,7 @@ public class Arena {
         GenerateNewFloor();
 
         state=GameState.ОЖИДАНИЕ;
-        
+        Main.sendBsignMysql(name, state.displayColor+state.name(), "", GameState.ОЖИДАНИЕ);
     }
 
     
@@ -287,15 +284,15 @@ public class Arena {
 
             getPlayers().stream().forEach((p) -> {  //всех игроков в мире добавля в список и на арену  
                 //players.add(p.getName());
-                p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 5, 1), true);
+                p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 5, 1));
                 p.getInventory().clear();
-                p.teleport( this.zero.clone().add(  (4 + random.nextInt(this.size_x-2)*4) , 1, (4 + random.nextInt(this.size_z-2)*4) ) );
+                p.teleport( zero.clone().add(  (4 + random.nextInt(this.size_x-2)*4) , 1, (4 + random.nextInt(this.size_z-2)*4) ) );
                 //p.playSound(p.getLocation(), "twist.start", 1, 1);
                 p.playSound(p.getLocation(), Sound.BLOCK_BELL_RESONATE, 1, 1);
             });
 
 
-                this.PreStart = (new BukkitRunnable() {         //тут уже таймер с игроками
+                PreStart = (new BukkitRunnable() {         //тут уже таймер с игроками
                 @Override
                 public void run() {
 
@@ -343,53 +340,46 @@ public class Arena {
     public void GameProgress() {
         if (state != GameState.ЭКИПИРОВКА) return;
         state=GameState.ИГРА;
-        if (this.PreStart != null)  this.PreStart.cancel();
+        if (PreStart != null)  PreStart.cancel();
 
 
 
         SendAB(Messages.GetMsg("start_game"));
             SendSound(Sound.ENTITY_CAT_AMBIENT);
 
-            this.displayColor = true;
-            this.removeFloor = false;
+            displayColor = true;
+            removeFloor = false;
 
 
-            this.GameTimer = (new BukkitRunnable() {
+            GameTimer = (new BukkitRunnable() {
                 @Override
                 public void run() {
 
-
                     if (displayColor) {
-
                         if (RemoveFloor != null)  RemoveFloor.cancel();
                         DysplayColor();                                             //показываем инфо
-
                         Bonus_spawn();
-
-
                     } else if (removeFloor) {
-
                         if (DysplayColor != null)  DysplayColor.cancel();
-
                         MustStayOne();                                              //удаляем все вроме текущего цвета
-                                                                                    //эта же функция возвращает новый пол через 3 сек
-                        round++;
-
-        //Signs.SignsUpdate( getName(), Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + Arena.this.round + "§7/§b§l" + Arena.this.maxRound  );
-        Main.sendBsignChanel(name, players.size(), state.displayColor+state.name(), Messages.GetMsg("signs_round_prefix") + Arena.this.round + "§7/§b§l" + Arena.this.maxRound, state);
-
+                        round++;                                                    //эта же функция возвращает новый пол через 3 сек
+                        Main.sendBsignChanel(name, players.size(), state.displayColor+state.name(), Messages.GetMsg("signs_round_prefix") + Arena.this.round + "§7/§b§l" + Arena.this.maxRound, state);
                     }
-
-
-
-
-                                                                        //this.show - ( this.difficulty * this.round )
+                    
+                    //тут тикает только во время раундов!!
+                    for (Player p : getPlayers()) {
+                        if ( zero.getBlockY()-p.getLocation().getBlockY() >=3 ) { //ниже полотна на 3 и более блока - упал
+                            loose(p);
+                        }
+                    }
+                    
+                    //this.show - ( this.difficulty * this.round )
                     if ( players.isEmpty() || playtime >  maxRound*show+20 && canreset) {
                         SendTitle(Messages.GetMsg("end_cause_timelinit_title"), Messages.GetMsg("end_cause_timelinit_subtitle"));
                         resetGame();
-                    } else if ( players.size()<=1 || round >= maxRound ) {
-                            this.cancel();
-                            endGame();
+                    } else if ( players.size()<=1 || round >= maxRound ) { //последний раунд и есть выжившие - победитель
+                        this.cancel();
+                        endGame();
                     }
 
                     playtime++;
@@ -415,9 +405,11 @@ public class Arena {
         //for (int i=0; i<(this.size_x*this.size_z/8); i++) {
         for (int i=ammount; i<(this.size_x*this.size_z/8); i++) {
 
-            ItemStack is = AM.bonus.clone();
-            AM.Set_name(is, String.valueOf(random.nextInt(999)));
-
+            final ItemStack is = new ItemStack(Material.SUNFLOWER, 1 );// AM.bonus.clone();
+            //AM.Set_name(is, String.valueOf(random.nextInt(999)));
+            final ItemMeta im = is.getItemMeta();
+            im.setDisplayName(String.valueOf(random.nextInt(999)));
+            is.setItemMeta(im);
             Item item = this.arenaLobby.getWorld().dropItem( this.zero.clone().add( (4 + random.nextInt(this.size_x-2)*4) , 2, (4 + random.nextInt(this.size_z-2)*4) ), is ); 
             item.setVelocity(new Vector(0, 0, 0));
     //System.out.println("!!!spawn "+item.getLocation());
@@ -549,7 +541,7 @@ public class Arena {
 
 
     public List<Player> getPlayers() {
-        List<Player>list=new ArrayList<>();
+        final List<Player>list=new ArrayList<>();
         for (String nik:players) {
             if (Bukkit.getPlayer(nik)!=null) list.add(Bukkit.getPlayer(nik));
         }
@@ -1032,7 +1024,6 @@ public class Arena {
 
     public void PlayerExit (Player p) {
 
-
         if ( IsJonable() ) {                //если ожидание или первый таёмер, т.е. не внесён в players
             players.remove(p.getName());         //перестраховка
                 if (players.size() < minPlayers && this.CoolDown != null) {      //если был запущен таймер
@@ -1061,9 +1052,42 @@ public class Arena {
 
 
 
-    public void Loose (Player p) {
+    public void loose (final Player p) {
 
-        if ( !players.contains(p.getName()) ) return;
+        if (players.remove(p.getName())) {
+            looser.add(p.getName());
+
+            if (canreset) {
+                //p.getInventory().clear();
+                //p.updateInventory();
+                spectate(p);
+                DonatEffect.spawnRandomFirework(p.getLocation());
+                
+                p.getWorld().playSound(p.getLocation(), "twist.fall_down", 10, 1);
+                p.sendTitle( Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
+                ApiOstrov.addStat(p, Stat.TW_game);
+                ApiOstrov.addStat(p, Stat.TW_loose);
+
+                //p.getWorld().playSound(p.getLocation(), Sound.ENTITY_DOLPHIN_DEATH, 10, 1);
+        //System.err.println( "  p.getLocation().getBlockY() "+p.getLocation().getBlockY()+ " zero.getBlockY() "+(zero.getBlockY()) );
+
+                   /* new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if ( p.getLocation().getBlockY() < (zero.getBlockY()) && state==GameState.ИГРА ) { //фикс от случайного спавна на арене
+                                for (byte z= 0; z<=6; z++) {
+                                    PigZombie pz = p.getWorld().spawn( p.getLocation().clone().add( z-3,1,z-3), PigZombie.class);
+                                    pz.setAngry(true);
+                                    pz.setCustomName(Messages.GetMsg("pig_zombie_name"));
+                                    pz.getEquipment().setItemInMainHand(new ItemStack(Material.CARROT, 1));
+                                    pz.setTarget(p);
+                                }
+                            }
+                        }
+                    }.runTaskLater(Main.GetInstance(), 2L); */
+            }     
+        }
+   /* if ( !players.contains(p.getName()) ) return;
 
         players.remove(p.getName());
         looser.add(p.getName());
@@ -1092,14 +1116,17 @@ public class Arena {
         }
         p.sendTitle( Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
         ApiOstrov.addStat(p, Stat.TW_game);
-        ApiOstrov.addStat(p, Stat.TW_loose);
+        ApiOstrov.addStat(p, Stat.TW_loose);*/
 
     }
 
-
+    
 // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-
+    public void spectate (final Player p) {
+        UniversalListener.spectatorPrepare(p);
+        p.teleport(zero.clone().add(0, 5, 0));
+    }
 
 
 
@@ -1137,14 +1164,14 @@ public class Arena {
         return players.contains(p.getName());
     }
     
-    public boolean IsLooser(String nik) {
-        return looser.contains(nik);
-    }
+   // public boolean IsLooser(String nik) {
+  //      return looser.contains(nik);
+ //   }
     
-    public boolean IsLooserLock(Player p) {
+   // public boolean IsLooserLock(Player p) {
 //System.out.println("IsLooserLock looser:"+this.looser.contains(p.getName())+" p(y):"+p.getLocation().getBlockY()+" arena(y)");        
-        return this.looser.contains(p.getName()) && p.getLocation().getBlockY() < this.zero.getBlockY();
-    }
+  //      return this.looser.contains(p.getName()) && p.getLocation().getBlockY() < this.zero.getBlockY();
+  //  }
     
     public boolean IsJonable() {
         return ( state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ );

@@ -165,7 +165,7 @@ public class UniversalListener implements Listener  {
                     @Override
                     public void run() {
                         //e.getPlayer().performCommand(joinCommad+want);
-                        AM.addPlayer(e.getPlayer(), want);
+                        AM.tryJoin(e.getPlayer(), want);
                     }
                 }.runTaskLater(plugin, 10);
             }
@@ -178,7 +178,8 @@ public class UniversalListener implements Listener  {
     public void onBsignLocalArenaClick (final BsignLocalArenaClick e) {
 //System.out.println(" ---- BsignLocalArenaClick --- "+e.player.getName()+" "+e.arenaName);
          //Kitbattle.join(e.player, , 10);
-         e.player.performCommand(joinCommad+e.arenaName);
+         
+        e.player.performCommand(joinCommad+e.arenaName);
     }
             
     
@@ -791,7 +792,7 @@ public class UniversalListener implements Listener  {
                     if (e.isLeftClick()) {
                         p.closeInventory();
                         if (p.getGameMode()==GameMode.SPECTATOR) {
-                            //PM.toLobby(p, true);
+                            lobbyJoin(p, Bukkit.getWorld("lobby").getSpawnLocation());
                         } else {
                             p.closeInventory();
                         }

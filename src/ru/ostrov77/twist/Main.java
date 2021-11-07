@@ -7,13 +7,7 @@ import java.util.concurrent.TimeUnit;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
-import org.bukkit.Material;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import ru.komiss77.ApiOstrov;
 import ru.komiss77.enums.GameState;
@@ -46,13 +40,12 @@ public class Main extends JavaPlugin implements Listener {
         
 
        
-@Override
-	public void onEnable() {
-            instance = this;  
+    @Override
+    public void onEnable() {
+        instance = this;  
                
-            MainConfig.Load();
-           // Signs.Load();
-            Messages.Load();
+        MainConfig.Load();
+        Messages.Load();
 
         Prefix = Messages.GetMsg("prefix");
 
@@ -61,17 +54,16 @@ public class Main extends JavaPlugin implements Listener {
         
         AM.Init();
         ScoreBoard.StartScore();
-        //if (bsign) AM.MySign();
                 
+        instance.getCommand("twist").setExecutor(new Commands());
+        instance.getCommand("tw").setExecutor(new Commands());
 
-                
         Bukkit.getServer().getPluginManager().registerEvents(new GameListener(), this);
         Bukkit.getServer().getPluginManager().registerEvents(new UniversalListener(this), this);
-        //Bukkit.getServer().getPluginManager().registerEvents(new Signs(), this);
 
         Bukkit.getLogger().info("Twist ready!");
         
-	}
+    }
 
         
        
@@ -115,11 +107,7 @@ public class Main extends JavaPlugin implements Listener {
 
 
         
-        
-@Override
-    public boolean onCommand(CommandSender cs, Command comm, String s, String[] arg) {
-            return Commands.handleCommand(cs, comm, s, arg);
-    }
+
 
     
     

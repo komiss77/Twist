@@ -1,9 +1,6 @@
 package ru.ostrov77.twist.Manager;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map.Entry;
 
 import org.bukkit.Location;
@@ -12,9 +9,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import ru.komiss77.enums.GameState;
-
-
-import ru.ostrov77.twist.Main;
 import ru.ostrov77.twist.Objects.Arena;
 
 
@@ -25,10 +19,9 @@ import ru.ostrov77.twist.Objects.Arena;
 public class AM {
 
     public static HashMap <String, Arena> arenas;
-    public static ItemStack bonus;
+    //public static ItemStack bonus;
     public static ItemStack no_mat;
     
-    //public static ProtocolManager manager;    
     
     
     
@@ -38,7 +31,7 @@ public class AM {
         arenas = new HashMap();
         Files.load_arenas();
     
-        bonus = new ItemStack(Material.SUNFLOWER, 1 );
+        //bonus = new ItemStack(Material.SUNFLOWER, 1 );
         
         no_mat = new ItemStack ( Material.STONE_BUTTON, 1);
         ItemMeta m = no_mat.getItemMeta();
@@ -49,51 +42,6 @@ public class AM {
     }
    
     
-    
-    
-    
-//public static AM getManager() {
-//        if (AM.am == null)   AM.am = new AM();
-//        return AM.am;
-//    }
-
-
-
-
-/*
-public static void MySign() {
-    
-    
-     (new BukkitRunnable() {
-            @Override
-            public void run() {
-
-                if ( !getManager().getAllArenas().isEmpty() ){
-
-                    final List<String> list = new ArrayList<>(am.arenas.keySet());
-                        curr++;
-                        if (curr >= list.size() ) curr = 0; 
-        ////////////////////////////////////////////////////////////////////////////////
-                
-                    API.sendDataToServer("§b§l§oTWIST<:>"
-                        + "§5§l"+am.arenas.get(list.get(curr)).getName()+"<:>"
-                        + "§1"+am.arenas.get(list.get(curr)).getPlayers().size()+"<:>"
-                        + "§5§l"+am.arenas.get(list.get(curr)).getStateAsString()+"<:>"
-                        + "5");
-                
-////////////////////////////////////////////////////////////////////////////////
-                }
-                
-            }
-        }).runTaskTimer(Main.GetInstance(), 100L, 100L);      
-}
- 
- */   
-    
-
-
-
-
 
 
 
@@ -122,52 +70,52 @@ public static void MySign() {
 
 
 
-public static boolean CanCreate ( Player p) {
-    boolean can=true;
-    for (Entry <String, Arena> e : arenas.entrySet()) {
-        if (e.getValue().zero.getWorld().getName().equals(p.getWorld().getName())) can=false;
-    } 
-    return can;
-}
+    public static boolean CanCreate ( Player p) {
+        boolean can=true;
+        for (Entry <String, Arena> e : arenas.entrySet()) {
+            if (e.getValue().zero.getWorld().getName().equals(p.getWorld().getName())) can=false;
+        } 
+        return can;
+    }
 
 
-public static HashMap<String,Arena> getAllArenas() { 
-    return arenas;
+    public static HashMap<String,Arena> getAllArenas() { 
+        return arenas;
     }
     
 
-public static Arena getArena(String s) {
+    public static Arena getArena(String s) {
          if (  !arenas.containsKey(s) ) return null;
          else return arenas.get(s);
     }
      
      
-public static boolean ArenaExist (String s) {
+    public static boolean ArenaExist (String s) {
         return arenas.containsKey(s);
     }
     
  
-public static void startArenaByName(Player p, String s) {
+    public static void startArenaByName(Player p, String s) {
         Arena arena = getArena(s);
         arena.ForceStart(p);
     }
 
-public static Arena getArenaByWorld(String w) {
-    for (Entry <String, Arena> e : arenas.entrySet()) {
-        if ( e.getValue().zero.getWorld().getName().equals(w)) return e.getValue();
-    }
+    public static Arena getArenaByWorld(String w) {
+        for (Entry <String, Arena> e : arenas.entrySet()) {
+            if ( e.getValue().zero.getWorld().getName().equals(w)) return e.getValue();
+        }
       return null;
     }
     
     
-public static void ResetArena(String s, Player p) {
+    public static void ResetArena(String s, Player p) {
         if (getArena(s) != null)  {
             getArena(s).resetGame();
             p.sendMessage("Arena "+s+" reset succes!");
         }
     }
 
-public static void DeleteArena(String s, Player p) {
+    public static void DeleteArena(String s, Player p) {
         if (getArena(s) != null)  {
             getArena(s).stopShedulers();
             getArena(s).ResetFloor();
@@ -178,11 +126,11 @@ public static void DeleteArena(String s, Player p) {
     }
 
 
-public static void stopAllArena() {
-    arenas.entrySet().stream().forEach((e) -> {
-        e.getValue().resetGame();
-    });
-}
+    public static void stopAllArena() {
+        arenas.entrySet().stream().forEach((e) -> {
+            e.getValue().resetGame();
+        });
+    }
    
     
     
@@ -197,32 +145,44 @@ public static void stopAllArena() {
     
     
     
-public static void addPlayer(Player player, String s) {
+    public static void tryJoin(Player player, String arenaName) {
     
-        Arena arena = getArena(s);
+        Arena arena = getArena(arenaName);
 
-        if (arena == null)  player.sendMessage(Messages.GetMsg("arena_not_exist"));
-        else if ( !arena.IsJonable() )   player.sendMessage(Messages.GetMsg("arena_ingame"));
-        else if (arena.IsInGame(player))   player.sendMessage(Messages.GetMsg("you_ingame"));
+        if (arena == null)  {
+            player.sendMessage("§cНет арены с названием "+arenaName);
+            return;
+        }
+        if (getPlayersArena(player)!=null) {
+            player.sendMessage("§cВы уже на арене !");
+            return;
+        }
+        if (arena.state == GameState.ОЖИДАНИЕ || arena.state == GameState.СТАРТ ) {
+            //player.sendMessage(Messages.GetMsg("arena_ingame"));
+            arena.addPlayers(player);
+        } else {
+            arena.spectate(player);
+        }
+        //else if (arena.IsInGame(player))   player.sendMessage(Messages.GetMsg("you_ingame"));
             
-                    else  arena.addPlayers(player);
+                  //  else  arena.addPlayers(player);
                     
     }
 
     
  
     
-public static boolean isInGame(Player p) {
-    return arenas.entrySet().stream().anyMatch((e) -> (e.getValue().IsInGame(p)));
-}
+    public static boolean isInGame(Player p) {
+        return arenas.entrySet().stream().anyMatch((e) -> (e.getValue().IsInGame(p)));
+    }
 
-public static boolean isLooser(String nik) {
-    return arenas.entrySet().stream().anyMatch((e) -> (e.getValue().IsLooser(nik)));
-}
+  //  public static boolean isLooser(String nik) {
+ //       return arenas.entrySet().stream().anyMatch((e) -> (e.getValue().IsLooser(nik)));
+ //   }
 
-public static boolean isLooserLock(Player p) {
-    return arenas.entrySet().stream().anyMatch((e) -> (e.getValue().IsLooserLock(p)));
-}
+  //  public static boolean isLooserLock(Player p) {
+  //      return arenas.entrySet().stream().anyMatch((e) -> (e.getValue().IsLooserLock(p)));
+ //   }
 
 
     
@@ -235,11 +195,11 @@ public static boolean isLooserLock(Player p) {
 
 
 
-public static Arena getPlayersArena(Player p) {
-    for (Arena a : arenas.values()) {
-        if (a.IsInGame(p)) return a;
-    }
-    return null;
+    public static Arena getPlayersArena(Player p) {
+        for (Arena a : arenas.values()) {
+            if (a.IsInGame(p)) return a;
+        }
+        return null;
     }
 
     
@@ -276,44 +236,44 @@ public static Arena getPlayersArena(Player p) {
     
 
 
+  /*  
     
     
-    
-public static void setItemName(final ItemStack item, final String name) {
-    final ItemMeta m = item.getItemMeta();
-    m.setDisplayName(name);
-    item.setItemMeta(m);
-}
-    
-public static void Set_name (ItemStack is, String name) {
-    ItemMeta m = is.getItemMeta();
-    m.setDisplayName(name);
-    is.setItemMeta( m );
+    public static void setItemName(final ItemStack item, final String name) {
+        final ItemMeta m = item.getItemMeta();
+        m.setDisplayName(name);
+        item.setItemMeta(m);
     }
 
-public static ItemStack Set_lore (ItemStack is, String lore1, String lore2, String lore3, String lore4 ) {
-    ItemMeta m = is.getItemMeta();
-    m.setLore(Arrays.asList( lore1, lore2, lore3, lore4 ) );
-    is.setItemMeta( m );
-    return is;
-    }
+    public static void Set_name (ItemStack is, String name) {
+        ItemMeta m = is.getItemMeta();
+        m.setDisplayName(name);
+        is.setItemMeta( m );
+        }
 
-public  static void Add_lore(ItemStack itemstack, String s) {
-    ItemMeta itemmeta = itemstack.getItemMeta();
-    List lores = new ArrayList();
-    if (itemmeta.getLore() != null) {
-        lores = itemmeta.getLore();
-    }
-    lores.add(s);
-    itemmeta.setLore(lores);
-    itemstack.setItemMeta(itemmeta);
-    }
+    public static ItemStack Set_lore (ItemStack is, String lore1, String lore2, String lore3, String lore4 ) {
+        ItemMeta m = is.getItemMeta();
+        m.setLore(Arrays.asList( lore1, lore2, lore3, lore4 ) );
+        is.setItemMeta( m );
+        return is;
+        }
 
-public  static void Set_lore(ItemStack itemstack, String lore0) {
-    ItemMeta itemmeta = itemstack.getItemMeta();
-    itemmeta.setLore(Arrays.asList( lore0 ));
-    itemstack.setItemMeta(itemmeta);
+    public  static void Add_lore(ItemStack itemstack, String s) {
+        ItemMeta itemmeta = itemstack.getItemMeta();
+        List lores = new ArrayList();
+        if (itemmeta.getLore() != null) {
+            lores = itemmeta.getLore();
+        }
+        lores.add(s);
+        itemmeta.setLore(lores);
+        itemstack.setItemMeta(itemmeta);
+        }
+
+    public  static void Set_lore(ItemStack itemstack, String lore0) {
+        ItemMeta itemmeta = itemstack.getItemMeta();
+        itemmeta.setLore(Arrays.asList( lore0 ));
+        itemstack.setItemMeta(itemmeta);
+        }
+
+*/
     }
-    
-    
-}

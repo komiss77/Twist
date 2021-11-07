@@ -1,23 +1,71 @@
 package ru.ostrov77.twist.Manager;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.bukkit.Bukkit;
 
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 import ru.ostrov77.twist.Main;
+import ru.ostrov77.twist.Objects.Arena;
 import ru.ostrov77.twist.UniversalListener;
 
 
-public class Commands extends JavaPlugin {
+public class Commands implements CommandExecutor, TabCompleter {
 
     private static final String c_pref = "tw";
+    public static List<String> subCommands = Arrays.asList( "join","leave","create","delete","list","reset","start");
     
     
     
-public static boolean handleCommand(CommandSender sender, Command cmd, String s, String[] args) {
+    
+    @Override
+    public List<String> onTabComplete(CommandSender cs, Command cmnd, String command, String[] args) {
+        final List <String> sugg = new ArrayList<>();
+//System.out.println("l="+strings.length+" 0="+strings[0]);
+        switch (args.length) {
+            
+            case 1:
+                //0- пустой (то,что уже введено)
+                for (String s : subCommands) {
+                    if (s.startsWith(args[0])) sugg.add(s);
+                }
+                break;
+
+            case 2:
+                //1-то,что вводится (обновляется после каждой буквы
+//System.out.println("l="+strings.length+" 0="+strings[0]+" 1="+strings[1]);
+                //if (strings[0].equalsIgnoreCase("build") || strings[0].equalsIgnoreCase("destroy") ) {
+                for (Arena a : AM.arenas.values()) {
+                    sugg.add(a.getName());
+                }
+                 //   sugg.add("loni");
+                //    sugg.add("permission");
+                 //   sugg.add("group");
+                  //  sugg.add("exp");
+                  //  sugg.add("reputation");
+                ///}
+                break;
+                
+
+        }
         
+       return sugg;
+    }    
+    
+
+
+
+
+    
+    
+    @Override
+    public boolean onCommand(CommandSender sender, Command cmd, String string, String[] args) {
+                
         if ( !(sender instanceof Player) ) { sender.sendMessage("Not console commad!"); return false; }
         if ( !cmd.getName().equalsIgnoreCase("tw") && !cmd.getName().equalsIgnoreCase("twist")) return false;
         
@@ -38,7 +86,7 @@ public static boolean handleCommand(CommandSender sender, Command cmd, String s,
             
             case "join":
                 if (!CheckArgs (p, args, 2, false, true)) break;
-                    AM.addPlayer((Player) p, args[1]);
+                    AM.tryJoin((Player) p, args[1]);
                 break;
             
             case "leave":

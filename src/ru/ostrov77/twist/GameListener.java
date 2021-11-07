@@ -27,12 +27,10 @@ import org.bukkit.entity.Item;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 import ru.ostrov77.twist.Manager.AM;
+import ru.ostrov77.twist.Objects.Arena;
 
 
 
@@ -135,10 +133,16 @@ public class GameListener implements Listener {
 
     @EventHandler ( priority = EventPriority.HIGH )
     public void EntityDamageByEntityEvent (EntityDamageByEntityEvent e){
-        if(! (e.getEntity() instanceof Player) ) return;
+        if(e.getEntityType()==EntityType.PLAYER) {
         Player p = (Player) e.getEntity();
-        if (AM.getPlayersArena(p)==null) return;
+        final Arena arena = AM.getPlayersArena(p);
+            
+            if ( arena!=null )  {
+                e.setDamage(0);
+                e.setCancelled(true);
+            }
         
+          /*  if (AM.getPlayersArena(p)==null) return;
             if ( e.getDamager().getType() == EntityType.ZOMBIFIED_PIGLIN) {
                 e.setDamage( e.getDamage()/1.5);                                                    //чтобы мучался дольше
         
@@ -161,7 +165,8 @@ public class GameListener implements Listener {
             } else if ( e.getDamager() instanceof Player) {
                 e.setDamage(0);
                 e.setCancelled(true);                                               
-            }
+            }*/
+        }
 
     }
     
@@ -172,18 +177,43 @@ public class GameListener implements Listener {
     @EventHandler
         public void onEntityDamage(EntityDamageEvent e) { 
         
-            if ( !(e.getEntity() instanceof Player) ) { 
-                e.setCancelled(true);
-                return; 
-            }
+           // if ( !(e.getEntity() instanceof Player) ) { 
+           //     e.setCancelled(true);
+          //      return; 
+          //  }
             
             final Player p = (Player) e.getEntity();
-            if (AM.getPlayersArena(p)==null) return;
+            e.setDamage(0);
+            p.setFallDistance(0);
             
-            switch (e.getCause()) {
+            final Arena arena = AM.getPlayersArena(p);
+            
+            if ( arena!=null )  {
+                switch (arena.state) {
+                    case ИГРА://во время игры
+                        if (e.getCause()==EntityDamageEvent.DamageCause.VOID || e.getCause()==EntityDamageEvent.DamageCause.FALL) {
+                            arena.loose(p); //там в зрителя и тп над ареной
+                        }   break; 
+                // AM.GlobalPlayerExit(p);  //если где-то играет
+                    case СТАРТ:
+                    case ФИНИШ:
+                        p.teleport(arena.zero.clone().add(0, 3, 0)); // 
+                        break;
+                    default:
+                        p.teleport(p.getWorld().getSpawnLocation());
+                        break;
+                }
+            } else { 
+                p.teleport(p.getWorld().getSpawnLocation()); 
+            }
+            
+            
+            //if (AM.getPlayersArena(p)==null) return;
+                        
+           /* switch (e.getCause()) {
                 
                 case VOID:
-                    if ( AM.isInGame(p) )  {
+                    if ( arena!=null )  { //во время игры
                         AM.GlobalPlayerExit(p);  //если где-то играет
                     } else { 
                         e.setDamage(0);
@@ -197,17 +227,17 @@ public class GameListener implements Listener {
                     e.setDamage(0);
                     break;
                     
-                case ENTITY_ATTACK:
-                    if ( e.getEntityType() == EntityType.ZOMBIFIED_PIGLIN ) {  //напали на хрюшу
-                        e.setCancelled(true);
-                        e.setDamage(0);
-                    }  
-                    break;
+               // case ENTITY_ATTACK:
+              //      if ( e.getEntityType() == EntityType.ZOMBIFIED_PIGLIN ) {  //напали на хрюшу
+              //          e.setCancelled(true);
+               //         e.setDamage(0);
+              //      }  
+              //      break;
                     
                 default:
                     e.setCancelled(true);
                     break;
-            }
+            }*/
     }      
   
 
@@ -235,7 +265,7 @@ public class GameListener implements Listener {
          AM.addPlayer(e.player, e.arenaName );
     }
     */    
-        
+    /*    
         
     @EventHandler
     public void onPlayerMove (PlayerMoveEvent e) { 
@@ -264,7 +294,7 @@ public class GameListener implements Listener {
              }  //не давать бегать род полом
 
     
-    }
+    }*/
        
     
 /*    
