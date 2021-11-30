@@ -480,7 +480,7 @@ public class Arena {
            
            getPlayers().stream().forEach((win) -> {
                 win.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 150, 0));
-                win.sendTitle( (Messages.GetMsg("you_win_title")), (Messages.GetMsg("you_win_subtitle")),5,20,5);
+                ApiOstrov.sendTitle(win, (Messages.GetMsg("you_win_title")), (Messages.GetMsg("you_win_subtitle")),5,20,5);
                 win.getWorld().playSound(win.getLocation(), "twist.win", 10, 1);
                 win.getWorld().playSound(win.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 10, 1);
                 SendMessage( "§e" + win.getName()+ (ApiOstrov.hasGroup( win.getName(), "gamer")? " §8(игроман)§2✔ ":" §8(игроман)§c✖ ") + " за игру§7: " 
@@ -1064,7 +1064,7 @@ public class Arena {
                 DonatEffect.spawnRandomFirework(p.getLocation());
                 
                 p.getWorld().playSound(p.getLocation(), "twist.fall_down", 10, 1);
-                p.sendTitle( Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
+                ApiOstrov.sendTitle(p,  Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
                 ApiOstrov.addStat(p, Stat.TW_game);
                 ApiOstrov.addStat(p, Stat.TW_loose);
 
@@ -1114,7 +1114,7 @@ public class Arena {
                     }
                 }.runTaskLater(Main.GetInstance(), 2L); 
         }
-        p.sendTitle( Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
+        ApiOstrov.sendTitle(p,  Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
         ApiOstrov.addStat(p, Stat.TW_game);
         ApiOstrov.addStat(p, Stat.TW_loose);*/
 
@@ -1343,7 +1343,7 @@ public class Arena {
 
     public void SendTitle(String t, String st) {
             arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
-                p.sendTitle( t, st, 2,10,2);
+                ApiOstrov.sendTitle(p,  t, st, 2,10,2);
     //(new TitleObject ((t), TitleObject.TitleType.TITLE)).setFadeIn(20).setStay(20).setFadeOut(5).send(p);
     //(new TitleObject ((st), TitleObject.TitleType.SUBTITLE)).setFadeIn(20).setStay(20).setFadeOut(5).send(p);
             });
