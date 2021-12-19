@@ -298,7 +298,7 @@ public class UniversalListener implements Listener  {
                 player.setWalkSpeed((float) 0.2);
                 player.setDisplayName("§7"+player.getName());
                 if (PM.nameTagManager!=null) {
-                    PM.nameTagManager.setNametag(player.getName(), "", ": §8Не выбрана");
+                    PM.nameTagManager.setNametag(player, "", ": §8Не выбрана");
                 }
                 //player.getAttribute(Attribute.GENERIC_ATTACK_SPEED).setBaseValue(4);
             }
@@ -393,7 +393,7 @@ public class UniversalListener implements Listener  {
             } else if (e.getView().getTitle().equals("§6ТП к игроку")) {
                 e.setCancelled(true);
 //System.out.println("Spectator1");
-                final Player target = Bukkit.getPlayer(ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()));
+                final Player target = Bukkit.getPlayerExact(ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()));
                 if (target == null) {
                     p.sendMessage("§cИгрок не найден");
                     p.closeInventory();
@@ -453,7 +453,7 @@ public class UniversalListener implements Listener  {
                 if (player.getGameMode()==GameMode.SPECTATOR ) {
                     continue;
                 }
-                inventory.addItem( new ItemBuilder(Material.PLAYER_HEAD).name("§b"+player.getName()).setSkullOwner(player.getName()).build() );//plugin.getSkull(player.getName(), ChatColor.AQUA + player.getName()) );
+                inventory.addItem( new ItemBuilder(Material.PLAYER_HEAD).name("§b"+player.getName()).setSkullOwner(player).build() );//plugin.getSkull(player.getName(), ChatColor.AQUA + player.getName()) );
             }
         //}
         return inventory;
@@ -504,7 +504,7 @@ public class UniversalListener implements Listener  {
     public void onTeleportChange (final PlayerTeleportEvent e) {
         if (!e.getFrom().getWorld().getName().equals(e.getTo().getWorld().getName())) {
             if (e.getFrom().getWorld().getName().equals("lobby")) {
-                if (PM.nameTagManager!=null) PM.nameTagManager.reset(e.getPlayer().getName());
+                if (PM.nameTagManager!=null) PM.nameTagManager.reset(e.getPlayer());
                 PM.getOplayer(e.getPlayer()).score.getSideBar().reset();
             }
         }

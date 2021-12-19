@@ -322,7 +322,7 @@ System.out.println("!!!spawn");
     @EventHandler (ignoreCancelled = true)
     public void sugarPickupEventSpeed(EntityPickupItemEvent e) {
         if (e.getEntityType()!=EntityType.PLAYER) return;
-        Player p = Bukkit.getPlayer(e.getEntity().getName());
+        Player p = Bukkit.getPlayerExact(e.getEntity().getName());
 
         //if (e.getItem().getItemStack()!=null && e.getItem().getItemStack().hasItemMeta() && e.getItem().getItemStack().getItemMeta().)    
             switch (e.getItem().getItemStack().getType()) {

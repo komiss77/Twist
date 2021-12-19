@@ -5,10 +5,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import net.minecraft.core.BlockPosition;
-import net.minecraft.server.level.WorldServer;
-import net.minecraft.world.level.block.state.IBlockData;
-import net.minecraft.world.level.chunk.ChunkSection;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Color;
@@ -18,13 +14,12 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.craftbukkit.v1_17_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_17_R1.block.data.CraftBlockData;
+import org.bukkit.craftbukkit.v1_18_R1.CraftWorld;
+import org.bukkit.craftbukkit.v1_18_R1.block.data.CraftBlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Item;
-import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
@@ -43,7 +38,6 @@ import ru.ostrov77.twist.Main;
 import ru.ostrov77.twist.Manager.AM;
 import ru.ostrov77.twist.Manager.Messages;
 import ru.ostrov77.twist.UniversalListener;
-//import ru.ostrov77.twist.Manager.Signs;
 
 
 
@@ -93,9 +87,9 @@ public class Arena {
     private static Random random;
     public GameState state; //ОЖИДАНИЕ СТАРТ ЭКИПИРОВКА ИГРА ФИНИШ
     
-    private final WorldServer nmsWorldServer;
-    private final IBlockData ibdDataAir;
-    private final IBlockData ibdDataDown;
+    private final net.minecraft.server.level.WorldServer nmsWorldServer;
+    private final net.minecraft.world.level.block.state.IBlockData ibdDataAir;
+    private final net.minecraft.world.level.block.state.IBlockData ibdDataDown;
     
     
     
@@ -125,8 +119,8 @@ public class Arena {
         if ( minPlayers>=2 && minPlayers<=64 ) this.minPlayers = minPlayers; else this.minPlayers = 2;
         if ( playersForForcestart>=2 && playersForForcestart<minPlayers ) this.playersForForcestart = playersForForcestart; else this.playersForForcestart = 12;
 
-        ibdDataAir = net.minecraft.world.level.block.Block.getByCombinedId( 0 );
-        ibdDataDown = net.minecraft.world.level.block.Block.getByCombinedId( this.down );
+        ibdDataAir = net.minecraft.world.level.block.Block.a( 0 );
+        ibdDataDown = net.minecraft.world.level.block.Block.a( this.down );
 //System.out.println("Создана арена "+name+"   размер "+this.size_x+"*"+this.size_z+
         //" diff "+this.difficulty+" раунды "+this.maxRound+" игроки/быстро "+this.minPlayers+"/"+this.playersForForcestart);
         //if (AM.ArenaExist(name)) return; //не создаём дубль!!
@@ -543,7 +537,7 @@ public class Arena {
     public List<Player> getPlayers() {
         final List<Player>list=new ArrayList<>();
         for (String nik:players) {
-            if (Bukkit.getPlayer(nik)!=null) list.add(Bukkit.getPlayer(nik));
+            if (Bukkit.getPlayerExact(nik)!=null) list.add(Bukkit.getPlayerExact(nik));
         }
         return list;
     }
@@ -756,37 +750,39 @@ public class Arena {
         mat = Material.valueOf(color.toString()+"_"+mat_base);
 //System.out.println("FillPlotMat color="+color+"mat="+mat);        
         final BlockData data=mat.createBlockData();
-        final IBlockData ibdColoredWool = ((CraftBlockData)data).getState(); //((CraftBlock)block).getNMS();
-        final IBlockData ibdAir = ((CraftBlockData)Material.AIR.createBlockData()).getState(); //((CraftBlock)block).getNMS();
+        final net.minecraft.world.level.block.state.IBlockData ibdColoredWool = ((CraftBlockData)data).getState(); //((CraftBlock)block).getNMS();
+        final net.minecraft.world.level.block.state.IBlockData ibdAir = ((CraftBlockData)Material.AIR.createBlockData()).getState(); //((CraftBlock)block).getNMS();
 //System.out.println("ibdColoredWool "+ibdColoredWool);        
         
         //IBlockData ibdColoredWool = net.minecraft.server.v1_16_R3.Block.getByCombinedId( mat.getId() + (c << 12) );
         //BlockPosition bps = new BlockPosition( x, y, z );
         //net.minecraft.server.v1_16_R3.World c_world = ((CraftWorld) arenaLobby.getWorld()).getHandle();
-        //ChunkSection chunksection = new ChunkSection(bps.getY() >> 4 << 4, c_world.worldProvider.m());
-        //ChunkSection chunksection = new ChunkSection(bps.getY() >> 4 << 4, ((CraftWorld) arenaLobby.getWorld()).getHandle().worldProvider.m());
+        //ChunkSection chunksection = new ChunkSection(bps.v() >> 4 << 4, c_world.worldProvider.m());
+        //ChunkSection chunksection = new ChunkSection(bps.v() >> 4 << 4, ((CraftWorld) arenaLobby.getWorld()).getHandle().worldProvider.m());
 
         for (byte x_ = 0; x_ < 4; x_++) {
             for (byte z_ = 0; z_ < 4; z_++) {
 
-                final BlockPosition bps = new BlockPosition( x+x_, y, z+z_ );
+                final net.minecraft.core.BlockPosition bps = new net.minecraft.core.BlockPosition( x+x_, y, z+z_ );
 //System.out.println(" bps= "+bps);        
-                net.minecraft.world.level.chunk.Chunk nmsChunk = nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );
+                //net.minecraft.world.level.chunk.Chunk nmsChunk = nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );
+                net.minecraft.world.level.chunk.Chunk nmsChunk = nmsWorldServer.d( (x+x_) >> 4, (z+z_) >> 4 );
 //System.out.println((x+x_)+":"+y+":"+(z+z_)+" nmsChunk= "+nmsChunk+" getSections="+nmsChunk.getSections().length+" need"+(y>>4)+"="+nmsChunk.getSections()[y>>4]);        
-                final ChunkSection chunksection = nmsChunk.getSections()[y>>4];
+                final net.minecraft.world.level.chunk.ChunkSection chunksection = nmsChunk.d()[y>>4];
                 if (chunksection==null) {
                     arenaLobby.getWorld().getBlockAt(x+x_, y, z+z_).setType(mat);
                 } else {
-                    chunksection.setType(bps.getX() & 15, bps.getY() & 15, bps.getZ() & 15, ibdColoredWool);
+                    //chunksection.setType(bps.u() & 15, bps.v() & 15, bps.w() & 15, ibdColoredWool);
+                    chunksection.a(bps.u() & 15, bps.v() & 15, bps.w() & 15, ibdColoredWool);
                     nmsWorldServer.s(bps);
                 }
-                //chunksection.setType(bps.getX() & 15, bps.getY() & 15, bps.getZ() & 15, ibdColoredWool);
+                //chunksection.setType(bps.getX() & 15, bps.getY() & 15, bps.w() & 15, ibdColoredWool);
                 //nmsWorldServer.s(bps);
 
                 //((CraftWorld)arenaLobby.getWorld()).getHandle().getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).a( bp, ibd );
                 //((CraftWorld) arenaLobby.getWorld()).getHandle().setTypeAndData(bps, ibd, 2); //if (applyPhysics) 3 else 2
                 //((CraftWorld) arenaLobby.getWorld()).getHandle().notify( bps, ibdColoredWool, Blocks.AIR.getBlockData(),  3);
-                ((CraftWorld) arenaLobby.getWorld()).getHandle().notify( bps, ibdColoredWool, ibdAir,  3);
+                ((CraftWorld) arenaLobby.getWorld()).getHandle().a( bps, ibdColoredWool, ibdAir,  3);
 
             }
         }
@@ -805,24 +801,27 @@ public class Arena {
 
         //BlockPosition bps = new BlockPosition( x, y, z );
         //net.minecraft.server.v1_16_R3.World c_world = ((CraftWorld) arenaLobby.getWorld()).getHandle();
-        //ChunkSection chunksection = new ChunkSection(bps.getY() >> 4 << 4, c_world.worldProvider.m());
-        //ChunkSection chunksection = new ChunkSection(bps.getY() >> 4 << 4, ((CraftWorld) arenaLobby.getWorld()).getHandle().worldProvider.m());
+        //ChunkSection chunksection = new ChunkSection(bps.v() >> 4 << 4, c_world.worldProvider.m());
+        //ChunkSection chunksection = new ChunkSection(bps.v() >> 4 << 4, ((CraftWorld) arenaLobby.getWorld()).getHandle().worldProvider.m());
 
         
         
         for (byte x_ = 0; x_ < 4; x_++) {
             for (byte z_ = 0; z_ < 4; z_++) {
-                final BlockPosition bps = new BlockPosition( (x+x_), y, (z+z_) );
+                final net.minecraft.core.BlockPosition bps = new net.minecraft.core.BlockPosition( (x+x_), y, (z+z_) );
 
-                final ChunkSection chunksection = nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).getSections()[bps.getY()>>4];
-                final IBlockData current = chunksection.getType(bps.getX() & 15, bps.getY() & 15, bps.getZ() & 15);
+                //final net.minecraft.world.level.chunk.ChunkSection chunksection = nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).getSections()[bps.v()>>4];
+                final net.minecraft.world.level.chunk.ChunkSection chunksection = nmsWorldServer.d( (x+x_) >> 4, (z+z_) >> 4 ).d()[bps.v()>>4];
+                //final net.minecraft.world.level.block.state.IBlockData current = chunksection.getType(bps.u() & 15, bps.v() & 15, bps.w() & 15);
+                final net.minecraft.world.level.block.state.IBlockData current = chunksection.a(bps.u() & 15, bps.v() & 15, bps.w() & 15);
                 
-                chunksection.setType(bps.getX() & 15, bps.getY() & 15, bps.getZ() & 15, ibdDataAir);
+                //chunksection.setType(bps.u() & 15, bps.v() & 15, bps.w() & 15, ibdDataAir);
+                chunksection.a(bps.u() & 15, bps.v() & 15, bps.w() & 15, ibdDataAir);
                 nmsWorldServer.s(bps); 
                 //((CraftWorld) arenaLobby.getWorld()).getHandle().getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).a( bps, ibd );
                 //((CraftWorld) arenaLobby.getWorld()).getHandle().setTypeAndData(bp, ibd, 2); //if (applyPhysics) 3 else 2
                 //nmsWorldServer.notify( bps , Blocks.WOOL.getBlockData(), ibdDataAir, 3);
-                nmsWorldServer.notify( bps , current, ibdDataAir, 3);
+                nmsWorldServer.a( bps , current, ibdDataAir, 3);
             }
         }
 
@@ -953,7 +952,9 @@ public class Arena {
             for (byte z_ = 0; z_ < 4; z_++) {
                 //net.minecraft.server.v1_16_R3.Chunk c = c_world.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );   //берёт NMS чанк
                 //nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).a( new BlockPosition( (x+x_), y, (z+z_) ) , ibdDataDown );                                    //вносит в него ibd по blockposition
-                nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).setType(new BlockPosition( (x+x_), y, (z+z_) ) , ibdDataDown , false, false );                                    //вносит в него ibd по blockposition
+                //nmsWorldServer.d( (x+x_) >> 4, (z+z_) >> 4 ).setType(new net.minecraft.core.BlockPosition( (x+x_), y, (z+z_) ) , ibdDataDown , false, false );                                    //вносит в него ibd по blockposition
+                net.minecraft.world.level.chunk.Chunk chunk = nmsWorldServer.d( (x+x_) >> 4, (z+z_) >> 4 );
+                chunk.setBlockState(new net.minecraft.core.BlockPosition( (x+x_), y, (z+z_) ) , ibdDataDown , false, false );                                    //вносит в него ibd по blockposition
 
             }
         }
@@ -976,7 +977,8 @@ public class Arena {
             for (byte z_ = 0; z_ < 4; z_++) {
                 //net.minecraft.server.v1_16_R3.Chunk c = c_world.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );   //берёт NMS чанк
                 //nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).a( new BlockPosition( (x+x_), y, (z+z_) ) , ibdDataAir );                                    //вносит в него ibd по blockposition
-                nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).setType(new BlockPosition( (x+x_), y, (z+z_) ) , ibdDataAir , false, false );                                    //вносит в него ibd по blockposition
+                net.minecraft.world.level.chunk.Chunk chunk = nmsWorldServer.d( (x+x_) >> 4, (z+z_) >> 4 );
+                chunk.setBlockState(new net.minecraft.core.BlockPosition( (x+x_), y, (z+z_) ) , ibdDataAir , false, false );                                    //вносит в него ibd по blockposition
             }
         }
 

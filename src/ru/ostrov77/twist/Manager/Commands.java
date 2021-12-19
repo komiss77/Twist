@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -98,8 +99,8 @@ public class Commands implements CommandExecutor, TabCompleter {
 
             case "create":
                 if (CheckArgs (p, args, 6, true, false)) {
-                    if ( !Main.isNumber(args[3]) || !Main.isNumber(args[4]) || !Main.isNumber(args[5]) ) {
-                        p.sendMessage( "§c<size_x>, <size_z> and <down> must be Integer! Use 0 for default walue!");
+                    if ( !Main.isNumber(args[3]) || !Main.isNumber(args[4])  ) {
+                        p.sendMessage( "§c<size_x>, <size_z> must be Integer! Use 0 for default walue!");
                         return false;
                     }
                     if ( p.getWorld().getName().equals(Bukkit.getWorlds().get(0).getName())) {
@@ -134,12 +135,14 @@ public class Commands implements CommandExecutor, TabCompleter {
                         args[4]="16";
                         p.sendMessage("§aUse default z-size (16)");
                     }
-                    if ( args[5].equals("0")) {
-                        args[5]="89";
-                        p.sendMessage("§aUse down default material - GLOWSTONE (89)");
+                    Material downMat = Material.matchMaterial(args[5]);
+                    if ( downMat == null) {
+                        args[5]=Material.GLOWSTONE.name();//"89";
+                        p.sendMessage("§aUse down default material - GLOWSTONE");
                     }
-                    if ( !net.minecraft.world.level.block.Block.getByCombinedId( Integer.valueOf(args[5])).getMaterial().isSolid()  ) {
-                        p.sendMessage("§cThe down material (bu ID) must be SOLID!!");
+                    //if ( !net.minecraft.world.level.block.Block.a( Integer.valueOf(args[5])).getMaterial().isSolid()  ) {
+                    if ( downMat.isSolid()  ) {
+                        p.sendMessage("§cThe down material must be SOLID!!");
                         return false;
                     }
                         p.sendMessage("§eGenerate arena field.. Please, wait..");
@@ -277,7 +280,7 @@ private static void Help (Player p ) {
                 p.sendMessage("§a-- "+Main.Prefix+" §acommands help --");
                 p.sendMessage(""+c_pref+" join <name>");
             if ( p.isOp()) {
-                p.sendMessage(""+c_pref+" create <name> <mode> <size_x> <size_z> <down_id>");
+                p.sendMessage(""+c_pref+" create <name> <mode> <size_x> <size_z> <down_material>");
                 p.sendMessage(""+c_pref+" delete <name>");
                 p.sendMessage(""+c_pref+" list");
                 p.sendMessage(""+c_pref+" setlobby <name>");
