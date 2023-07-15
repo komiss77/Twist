@@ -1,6 +1,5 @@
 package ru.ostrov77.twist;
 
-
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -19,7 +18,6 @@ import org.bukkit.event.weather.WeatherChangeEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.Listener;
-
 import org.bukkit.Effect;
 import org.bukkit.Sound;
 import org.bukkit.entity.EntityType;
@@ -29,8 +27,6 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.util.Vector;
 
-import ru.ostrov77.twist.Manager.AM;
-import ru.ostrov77.twist.Objects.Arena;
 
 
 

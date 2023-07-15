@@ -10,12 +10,8 @@ import org.bukkit.DyeColor;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import ru.komiss77.ApiOstrov;
+import ru.komiss77.Ostrov;
 import ru.komiss77.enums.GameState;
-import ru.ostrov77.twist.Manager.AM;
-import ru.ostrov77.twist.Manager.Commands;
-import ru.ostrov77.twist.Manager.Files;
-import ru.ostrov77.twist.Manager.Messages;
-import ru.ostrov77.twist.Manager.ScoreBoard;
 
 
 
@@ -29,9 +25,28 @@ public class Main extends JavaPlugin implements Listener {
     
     public static boolean noteblock = false;
     
-
+  //  public static String cmd = "";
+    public static float speed = 0.3F;
+   // public static String pack_url = "http://ostrov77.ru/uploads/resourcepacks/twist.zip";
         
-    public static ArrayList<DyeColor> allowedColors = new ArrayList<>(Arrays.asList( DyeColor.BLACK ));
+    public static ArrayList<DyeColor> allowedColors = new ArrayList<>(Arrays.asList( 
+            DyeColor.BLACK,
+            DyeColor.BLUE,
+            DyeColor.BROWN,
+            DyeColor.CYAN,
+            DyeColor.GRAY,
+            DyeColor.GREEN,
+            DyeColor.LIGHT_BLUE,
+            DyeColor.LIGHT_GRAY,
+            DyeColor.LIME,
+            DyeColor.MAGENTA,
+            DyeColor.ORANGE,
+            DyeColor.PINK,
+            DyeColor.PURPLE,
+            DyeColor.RED,
+            DyeColor.WHITE,
+            DyeColor.YELLOW 
+    ));
     public static HashMap <String, Long> cooldown = new HashMap();
     
     
@@ -44,17 +59,19 @@ public class Main extends JavaPlugin implements Listener {
     public void onEnable() {
         instance = this;  
                
-        MainConfig.Load();
         Messages.Load();
 
         Prefix = Messages.GetMsg("prefix");
 
-        if (Bukkit.getPluginManager().isPluginEnabled("NoteBlockAPI")) {noteblock=true; log("NoteBlockAPI found! Enable music for arena. Please, put .nbt songs in plugins/Twist/songs folser!");}
+        if (Bukkit.getPluginManager().isPluginEnabled("NoteBlockAPI")) {
+            noteblock=true;
+            log("NoteBlockAPI found! Enable music for arena. Please, put .nbt songs in plugins/Twist/songs folser!");
+        }
 
-        
+       
         AM.Init();
         ScoreBoard.StartScore();
-                
+ 
         instance.getCommand("twist").setExecutor(new Commands());
         instance.getCommand("tw").setExecutor(new Commands());
 

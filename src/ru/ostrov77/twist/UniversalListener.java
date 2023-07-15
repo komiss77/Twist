@@ -2,7 +2,6 @@ package ru.ostrov77.twist;
 
 
 import java.util.Iterator;
-import me.clip.deluxechat.DeluxeChat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
@@ -56,6 +55,7 @@ import ru.komiss77.events.BungeeDataRecieved;
 import ru.komiss77.events.FriendTeleportEvent;
 import ru.komiss77.events.GameInfoUpdateEvent;
 import ru.komiss77.modules.games.GM;
+import ru.komiss77.modules.player.Oplayer;
 import ru.komiss77.modules.player.PM;
 import ru.komiss77.utils.ItemBuilder;
 import ru.komiss77.utils.ItemUtils;
@@ -63,8 +63,6 @@ import ru.komiss77.utils.inventory.ClickableItem;
 import ru.komiss77.utils.inventory.InventoryContent;
 import ru.komiss77.utils.inventory.InventoryProvider;
 import ru.komiss77.utils.inventory.SmartInventory;
-import ru.ostrov77.twist.Manager.AM;
-import ru.ostrov77.twist.Objects.Arena;
 
 
 
@@ -85,10 +83,10 @@ public class UniversalListener implements Listener  {
 
     public UniversalListener(final Plugin plugin) {
         UniversalListener.plugin=plugin;
-        mapSelector = new ItemBuilder(Material.CAMPFIRE).setName("§aВыбор Карты").build();
-        exit = new ItemBuilder(Material.MAGMA_CREAM).setName("§4Вернуться в лобби").build();
-        music = new ItemBuilder(Material.NOTE_BLOCK).setName("§4Музыка").lore("§eЛКМ §7- §aвкл§7/§4выкл").lore("§eПКМ §7- меню").build();
-        leaveArena = new ItemBuilder(Material.SLIME_BALL).setName("§4Покинуть Арену").build();
+        mapSelector = new ItemBuilder(Material.CAMPFIRE).name("§aВыбор Карты").build();
+        exit = new ItemBuilder(Material.MAGMA_CREAM).name("§4Вернуться в лобби").build();
+        music = new ItemBuilder(Material.NOTE_BLOCK).name("§4Музыка").lore("§eЛКМ §7- §aвкл§7/§4выкл").lore("§eПКМ §7- меню").build();
+        leaveArena = new ItemBuilder(Material.SLIME_BALL).name("§4Покинуть Арену").build();
         teleporter_itemstack = new ItemBuilder(Material.COMPASS).name("§6ТП к доступным игрокам").build();
         mapSelectMenu = Bukkit.createInventory(null, 54, "§1Карты");
         spectatorMenu = Bukkit.createInventory(null, 9, "§1Меню зрителя");
@@ -186,7 +184,7 @@ public class UniversalListener implements Listener  {
     @EventHandler (priority = EventPriority.MONITOR)
     public static void SignUpdateEvent (GameInfoUpdateEvent e) {
 //System.out.println(" ---- SignUpdateEvent 1 --- "+e.server+" "+e.arena+" this="+SM.this_server_name+" exist?"+AM._ARENAS.containsKey(e.arena));
-        if (e.ai.server.equals(GM.this_server_name) && !e.ai.arenaName.isEmpty() && AM.arenas.containsKey(e.ai.arenaName)) {
+        if (e.ai.server.equals(Ostrov.MOT_D) && !e.ai.arenaName.isEmpty() && AM.arenas.containsKey(e.ai.arenaName)) {
             final Arena arena = AM.getArena(e.ai.arenaName);
             if (ApiOstrov.isInteger(arena.arenaLobby.getWorld().getName().replaceFirst("map", ""))) {
                 final int slot = Integer.valueOf(arena.arenaLobby.getWorld().getName().replaceFirst("map", ""));
@@ -297,9 +295,9 @@ public class UniversalListener implements Listener  {
                 perWorldTabList(player);
                 player.setWalkSpeed((float) 0.2);
                 player.setDisplayName("§7"+player.getName());
-                if (PM.nameTagManager!=null) {
-                    PM.nameTagManager.setNametag(player, "", ": §8Не выбрана");
-                }
+                //if (PM.nameTagManager!=null) {
+                    PM.getOplayer(player).tag( "", ": §8Не выбрана");
+                //}
                 //player.getAttribute(Attribute.GENERIC_ATTACK_SPEED).setBaseValue(4);
             }
         }.runTaskLater(plugin, 1);
@@ -504,7 +502,8 @@ public class UniversalListener implements Listener  {
     public void onTeleportChange (final PlayerTeleportEvent e) {
         if (!e.getFrom().getWorld().getName().equals(e.getTo().getWorld().getName())) {
             if (e.getFrom().getWorld().getName().equals("lobby")) {
-                if (PM.nameTagManager!=null) PM.nameTagManager.reset(e.getPlayer());
+                //if (PM.nameTagManager!=null) 
+                    PM.getOplayer(e.getPlayer()).tag("","");
                 PM.getOplayer(e.getPlayer()).score.getSideBar().reset();
             }
         }
@@ -545,15 +544,16 @@ public class UniversalListener implements Listener  {
     }
     
     public static void switchLocalGlobal(final Player p, final boolean notify) {
+        final Oplayer op = PM.getOplayer(p);
         if (p.getWorld().getName().equalsIgnoreCase("lobby")) { //оказались в лобби, делаем глобальный
-            if ( DeluxeChat.isLocal(p.getUniqueId().toString()) ){
-                if (notify) p.sendMessage("§8Чат переключен на глобальный");
-                Ostrov.deluxechatPlugin.setGlobal(p.getUniqueId().toString());
+            if ( op.isLocalChat()){
+                if (notify) p.sendMessage("§8Чат переключен на Общий");
+                op.setLocalChat(false);//Ostrov.deluxechatPlugin.setGlobal(p.getUniqueId().toString());
             }
         } else {
-            if ( !DeluxeChat.isLocal(p.getUniqueId().toString()) )  {
-                if (notify) p.sendMessage("§8Чат переключен на Игровой");
-                Ostrov.deluxechatPlugin.setLocal(p.getUniqueId().toString());
+            if ( !op.isLocalChat() )  {
+                if (notify) p.sendMessage("§8Чат переключен на Арену");
+                op.setLocalChat(true);//Ostrov.deluxechatPlugin.setLocal(p.getUniqueId().toString());
             }
         }
     }
