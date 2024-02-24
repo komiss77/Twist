@@ -1,5 +1,6 @@
 package ru.ostrov77.twist;
 
+import ru.ostrov77.minigames.UniversalListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -10,15 +11,14 @@ import org.bukkit.DyeColor;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import ru.komiss77.ApiOstrov;
-import ru.komiss77.Ostrov;
 import ru.komiss77.enums.GameState;
 
 
 
 
-public class Main extends JavaPlugin implements Listener {
+public class Twist extends JavaPlugin implements Listener {
 
-    public static Main instance;
+    public static Twist instance;
     public static String Prefix="§5Твист: §f";
     
     public static boolean shutdown = false;
@@ -59,9 +59,7 @@ public class Main extends JavaPlugin implements Listener {
     public void onEnable() {
         instance = this;  
                
-        Messages.Load();
-
-        Prefix = Messages.GetMsg("prefix");
+        Prefix =  "§2[§bТвист§2] §f";
 
         if (Bukkit.getPluginManager().isPluginEnabled("NoteBlockAPI")) {
             noteblock=true;
@@ -70,12 +68,11 @@ public class Main extends JavaPlugin implements Listener {
 
        
         AM.Init();
-        ScoreBoard.StartScore();
  
-        instance.getCommand("twist").setExecutor(new Commands());
-        instance.getCommand("tw").setExecutor(new Commands());
+        instance.getCommand("twist").setExecutor(new TwistCmd());
+        instance.getCommand("tw").setExecutor(new TwistCmd());
 
-        Bukkit.getServer().getPluginManager().registerEvents(new GameListener(), this);
+        Bukkit.getServer().getPluginManager().registerEvents(new TwistLst(), this);
         Bukkit.getServer().getPluginManager().registerEvents(new UniversalListener(this), this);
 
         Bukkit.getLogger().info("Twist ready!");
@@ -116,7 +113,6 @@ public class Main extends JavaPlugin implements Listener {
 ////////////////////////////////////////////////////////////////////////////////
             
             //this.saveConfig();
-            Files.saveAll();
             AM.stopAllArena();
 	}
 
@@ -168,8 +164,8 @@ public class Main extends JavaPlugin implements Listener {
         
 public static void log(String s) { Bukkit.getConsoleSender().sendMessage(Prefix + s);}        
         
-public static final Main GetInstance() {
-        return Main.instance;
+public static final Twist GetInstance() {
+        return Twist.instance;
     }  
 
 

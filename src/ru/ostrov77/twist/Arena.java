@@ -1,5 +1,6 @@
 package ru.ostrov77.twist;
 
+import ru.ostrov77.minigames.UniversalListener;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -7,19 +8,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import net.kyori.adventure.text.Component;
 import net.minecraft.core.BlockPosition;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
 import org.bukkit.FireworkEffect;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.craftbukkit.v1_20_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_20_R1.block.CraftBlock;
-import org.bukkit.craftbukkit.v1_20_R1.block.data.CraftBlockData;
+import org.bukkit.craftbukkit.v1_20_R3.CraftWorld;
+import org.bukkit.craftbukkit.v1_20_R3.block.CraftBlock;
+import org.bukkit.craftbukkit.v1_20_R3.block.data.CraftBlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
@@ -34,700 +37,726 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import ru.komiss77.ApiOstrov;
+import ru.komiss77.enums.Game;
 import ru.komiss77.enums.GameState;
 import ru.komiss77.enums.Stat;
+import ru.komiss77.modules.player.Oplayer;
+import ru.komiss77.modules.player.PM;
+import ru.komiss77.objects.CaseInsensitiveMap;
 import ru.komiss77.utils.DonatEffect;
+import ru.komiss77.utils.ItemUtils;
+import ru.komiss77.utils.ParticlePlay;
 import ru.komiss77.utils.TCUtils;
+import ru.ostrov77.minigames.IArena;
+import ru.ostrov77.minigames.MG;
 
-
-
-
-
-public class Arena {
+public class Arena implements IArena {
 
     private String name;
     public Location arenaLobby;
     public Location zero;
-    private String mode;    
-    private Material mat;    
+    //private String mode;    
+    private Material mat = Material.WHITE_WOOL;
     private final byte size_x;
     private final byte size_z;
     private final byte down;
     private byte show;
     private byte difficulty;
     private byte maxRound;
-    private byte minPlayers;
-    private byte playersForForcestart;
-    
+    //private byte minPlayers;
+    //private byte playersForForcestart;
+
     private BukkitTask CoolDown;
-    private byte cdCounter;
+    private int cdCounter;
     private BukkitTask PreStart;
-    private byte prestart;
+    private int prestart;
     private BukkitTask GameTimer;
-    private short playtime;
+    private int playtime;
     private BukkitTask EndGame;
-    private byte ending;
+    private int ending;
     private BukkitTask DysplayColor;
     private BukkitTask RemoveFloor;
-    
+
     private boolean canreset;
-    
+
     private byte round;
     private DyeColor nextColor;
 
     private boolean displayColor;
     public boolean removeFloor;
 
-
-    public Set<String> players = new HashSet();
+    public Map<String, Integer> players = new HashMap<>();
     public Set<String> looser = new HashSet<>();
-    private Map<Integer, DyeColor> colormap = new HashMap<>();    
+    private Map<Integer, DyeColor> colormap = new HashMap<>();
 
-    //private RadioSongPlayer songPlayer;    
     private static Random random;
     public GameState state; //ОЖИДАНИЕ СТАРТ ЭКИПИРОВКА ИГРА ФИНИШ
-    
+
     private final net.minecraft.server.level.WorldServer nmsWorldServer;
     private final net.minecraft.world.level.block.state.IBlockData ibdDataAir;
-    //private final net.minecraft.world.level.block.state.IBlockData ibdDataDown;
-    private static final BlockPosition.MutableBlockPosition mutableBlockPosition = new BlockPosition.MutableBlockPosition(0, 0, 0);;
+    private static final BlockPosition.MutableBlockPosition mutableBlockPosition = new BlockPosition.MutableBlockPosition(0, 0, 0);
+
+    ;
     
     
     
-    public Arena( String name, Location zero, Location arenaLobby,  String material, byte size_x, byte size_z, byte down, byte show, byte difficulty, byte maxRound, byte minPlayers, byte playersForForcestart ) {
-        
-        
+    public Arena(String name,
+            Location zero,
+            Location arenaLobby,
+            String material,
+            byte size_x, byte size_z, byte down, byte show,
+            byte difficulty, byte maxRound, byte minPlayers, byte playersForForcestart) {
+
         this.name = name;
         //try {
-            this.arenaLobby = arenaLobby;
-            this.zero = zero;
+        this.arenaLobby = arenaLobby;
+        this.zero = zero;
         //} catch (NullPointerException ex) {}
-        
-        
-        switch (material) {
-            case "clay" : mat = Material.WHITE_CONCRETE;  this.mode="clay"; break;
-            case "glass": mat = Material.WHITE_STAINED_GLASS; this.mode="glass"; break;
-            default     : mat = Material.WHITE_WOOL;          this.mode="wool"; break;
+
+        //switch (material) {
+        //    case "clay" : mat = Material.WHITE_CONCRETE;  this.mode="clay"; break;
+        //    case "glass": mat = Material.WHITE_STAINED_GLASS; this.mode="glass"; break;
+        //    default     : mat = Material.WHITE_WOOL;          this.mode="wool"; break;
+        // }
+        if (size_x >= 2 && size_x <= 64) {
+            this.size_x = size_x;
+        } else {
+            this.size_x = 16;
         }
-        
-        if ( size_x>=2 && size_x<=64 )  this.size_x = size_x; else  this.size_x = 16; 
-        if ( size_z>=2 && size_z<=64 ) this.size_z = size_z; else this.size_z = 16;
-        if ( down>=1 && down<=300 )  this.down = down; else  this.down = 89; 
-        if ( show>=5 && show<=100 )  this.show = show; else  this.show = 25; 
-        if ( difficulty>=1 && difficulty <=3 ) this.difficulty = difficulty; else this.difficulty = 1;
-        if ( maxRound>=1 && maxRound<=64 ) this.maxRound = maxRound; else this.maxRound = 10; 
-        if ( minPlayers>=2 && minPlayers<=64 ) this.minPlayers = minPlayers; else this.minPlayers = 2;
-        if ( playersForForcestart>=2 && playersForForcestart<minPlayers ) this.playersForForcestart = playersForForcestart; else this.playersForForcestart = 12;
+        if (size_z >= 2 && size_z <= 64) {
+            this.size_z = size_z;
+        } else {
+            this.size_z = 16;
+        }
+        if (down >= 1 && down <= 300) {
+            this.down = down;
+        } else {
+            this.down = 89;
+        }
+        if (show >= 5 && show <= 100) {
+            this.show = show;
+        } else {
+            this.show = 25;
+        }
+        if (difficulty >= 1 && difficulty <= 3) {
+            this.difficulty = difficulty;
+        } else {
+            this.difficulty = 1;
+        }
+        if (maxRound >= 1 && maxRound <= 64) {
+            this.maxRound = maxRound;
+        } else {
+            this.maxRound = 10;
+        }
+        //if (minPlayers >= 2 && minPlayers <= 64) {
+        //    this.minPlayers = minPlayers;
+       // } else {
+       //     this.minPlayers = 2;
+      //  }
+       // if (playersForForcestart >= 2 && playersForForcestart < minPlayers) {
+      //      this.playersForForcestart = playersForForcestart;
+      //  } else {
+      //      this.playersForForcestart = 12;
+     //   }
 
         nmsWorldServer = ((CraftWorld) arenaLobby.getWorld()).getHandle();
-        ibdDataAir = ((CraftBlockData)Material.AIR.createBlockData()).getState();//= net.minecraft.world.level.block.Block.a( 0 );
+        ibdDataAir = ((CraftBlockData) Material.AIR.createBlockData()).getState();//= net.minecraft.world.level.block.Block.a( 0 );
         //ibdDataDown = ((CraftBlockData)Material.GLOWSTONE.createBlockData()).getState();//= net.minecraft.world.level.block.Block.a( this.down );
 //System.out.println("Создана арена "+name+"   размер "+this.size_x+"*"+this.size_z+
         //" diff "+this.difficulty+" раунды "+this.maxRound+" игроки/быстро "+this.minPlayers+"/"+this.playersForForcestart);
         //if (AM.ArenaExist(name)) return; //не создаём дубль!!
-        
+
         cdCounter = 40; //ожид в лобби арены
         prestart = 7; //ожид на арене
         ending = 7; //салюты,награждения
         playtime = 0;
-        
+
         canreset = true;
-        
-        round = 1; 
+
+        round = 1;
         nextColor = TCUtils.randomDyeColor();//DyeColor.BLACK;
         displayColor = true;
         removeFloor = false;
         random = new Random();
-        
-       // no_mat = new ItemStack ( Material.STONE_BUTTON, 1);
-       // ItemMeta m = no_mat.getItemMeta();
-      //  m.setDisplayName(  "§8<<<" );
-      //  no_mat.setItemMeta(m);
 
+        // no_mat = new ItemStack ( Material.STONE_BUTTON, 1);
+        // ItemMeta m = no_mat.getItemMeta();
+        //  m.setDisplayName(  "§8<<<" );
+        //  no_mat.setItemMeta(m);
         GenerateNewFloor();
 
-        state=GameState.ОЖИДАНИЕ;
-        Main.sendBsignMysql(name, state.displayColor+state.name(), "", GameState.ОЖИДАНИЕ);
+        state = GameState.ОЖИДАНИЕ;
+        Twist.sendBsignMysql(name, state.displayColor + state.name(), "", GameState.ОЖИДАНИЕ);
     }
 
-    
-    
-    
-    
- 
-    public void resetGame() {  
+    public void resetGame() {
 
-        canreset=false;
+        canreset = false;
+        stopShedulers();
 
-        arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {  
-            UniversalListener.lobbyJoin(p, Bukkit.getWorld("lobby").getSpawnLocation());
+        arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
+            MG.lobbyJoin(p);
             //p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation()); 
         });
 
-        stopShedulers();    
 
-        arenaLobby.getWorld().getEntities().stream().forEach((e) -> { 
-            if (e.getType()!=EntityType.PLAYER) e.remove();
+        arenaLobby.getWorld().getEntities().stream().forEach((e) -> {
+            if (e.getType() != EntityType.PLAYER) {
+                e.remove();
+            }
         });
 
         players.clear();
         looser.clear();
 
-        round=1;
+        round = 1;
 
-        cdCounter=40;
+        cdCounter = 40;
         prestart = 7;
-        ending=10;
+        ending = 10;
         playtime = 0;
 
         GenerateNewFloor();//BackFloor();
 
-        round = 1; 
+        round = 1;
         nextColor = TCUtils.randomDyeColor();//DyeColor.BLACK;
 
         displayColor = true;
         removeFloor = false;
 
         state = GameState.ОЖИДАНИЕ;
-        canreset=true;
-        Main.sendBsignMysql(name, state.displayColor+state.name(), "", GameState.ОЖИДАНИЕ);
-      //  if (Main.noteblock) StopMusic();
+        canreset = true;
+        Twist.sendBsignMysql(name, state.displayColor + state.name(), "", GameState.ОЖИДАНИЕ);
+        //  if (Main.noteblock) StopMusic();
     }
 
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
- 
- 
-    
     public void startCountdown() {                            //ожидание в лобби
-            if (state != GameState.ОЖИДАНИЕ) return;
-            state=GameState.СТАРТ;
+        if (state != GameState.ОЖИДАНИЕ) {
+            return;
+        }
+        state = GameState.СТАРТ;
 
-            SendTitle( Messages.GetMsg("prestart_title"), Messages.GetMsg("prestart_subtitle").replace("%s", String.valueOf(cdCounter)) );
-         //   if (Main.noteblock) StartMusic ();
+        SendTitle("", "§6" + String.valueOf(cdCounter));
+        //   if (Main.noteblock) StartMusic ();
 
-            CoolDown = (new BukkitRunnable() {
-                @Override
-                public void run() {
+        CoolDown = (new BukkitRunnable() {
+            @Override
+            public void run() {
 
-                    if (cdCounter == 0) {
-                            cdCounter = 40;
-                            this.cancel();
-                            PrepareToStart();
+                if (cdCounter == 0) {
+                    cdCounter = 40;
+                    this.cancel();
+                    PrepareToStart();
 
-                    } else if ( players.size() < minPlayers ) {
-                        SendAB(Messages.GetMsg("no_enough_players"));
-                        state=GameState.ОЖИДАНИЕ;
-                        cdCounter = 40;
-                        this.cancel();
+                //}// else if (players.size() < minPlayers) {
+                 //   SendAB("§d§lНедостаточно участников, счётчик остановлен.");
+                 //   state = GameState.ОЖИДАНИЕ;
+                //    cdCounter = 40;
+              //      this.cancel();
 
-                    } else if ( players.size() == playersForForcestart && cdCounter > 10 ) {
-                        SendAB(Messages.GetMsg("fast_start"));
-                        cdCounter = 10;
+              //  } else if (players.size() == playersForForcestart && cdCounter > 10) {
+                //    SendAB("§2§lВремя до старта игры уменьшено!");
+                //    cdCounter = 10;
 
-                    } else if (cdCounter > 0) {
-                            --cdCounter;
-                            //Signs.SignsUpdate(name, Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1"+cdCounter );
-                            Main.sendBsignChanel(name, players.size(), Messages.GetMsg("signs_line_3_prefix")+ players.size(), state.displayColor+state.name()+" §4"+cdCounter, GameState.СТАРТ);
-                            if (cdCounter <= 5 && cdCounter > 0) {
-                                SendTitle("", "§b"+cdCounter+" !");
-                                SendSound(Sound.BLOCK_COMPARATOR_CLICK);
-                            }
-                    } 
+                } else if (cdCounter > 0) {
+                    --cdCounter;
+                    Twist.sendBsignChanel(name, players.size(),
+                            "§1Твистеры: " + players.size(),
+                            state.displayColor + state.name() + " §4" + cdCounter, GameState.СТАРТ);
+                    if (cdCounter <= 5 && cdCounter > 0) {
+                        SendTitle("", "§b" + cdCounter + " !");
+                        SendSound(Sound.BLOCK_COMPARATOR_CLICK);
+                    }
+                    Oplayer op;
+                    for (Player p : getPlayers()) {
+                        op = PM.getOplayer(p);
+                        op.score.getSideBar().setTitle("§6До старта: §b"+(cdCounter+7));
+                    }
 
                 }
-            }).runTaskTimer(Main.GetInstance(), 0L, 20L);
-        }
 
-
+            }
+        }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
+    }
 
     public void ForceStart(Player p) {
-         if ( !IsJonable() ) {
-            p.sendMessage( "§cYou can't start an arena - arena in game!");
+        if (!IsJonable()) {
+            p.sendMessage("§cYou can't start an arena - arena in game!");
             return;
-         }
-         if ( state != GameState.СТАРТ ) {
-            p.sendMessage( "§cForce start is possible when min.player reached!");
+        }
+        if (state != GameState.СТАРТ) {
+            p.sendMessage("§cForce start is possible when min.player reached!");
             return;
-         }
-            if (CoolDown != null && cdCounter>3)  cdCounter=3;
-            p.sendMessage( Messages.GetMsg("arenas_start_command_result"));
-            PrepareToStart();
+        }
+        if (CoolDown != null && cdCounter > 3) {
+            cdCounter = 3;
+        }
+        p.sendMessage("§bВремя до старта уменьшено");
+        PrepareToStart();
+    }
+
+    public void PrepareToStart() {
+        if (state != GameState.СТАРТ) {
+            return;
+        }
+        state = GameState.ЭКИПИРОВКА;
+        if (CoolDown != null) {
+            CoolDown.cancel();
         }
 
+        getPlayers().stream().forEach( p -> {  //всех игроков в мире добавля в список и на арену  
+            //players.add(p.getName());
+            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 5, 1));
+            p.getInventory().clear();
+            p.teleport(zero.clone().add((4 + random.nextInt(this.size_x - 2) * 4), 1, (4 + random.nextInt(this.size_z - 2) * 4)));
+            //p.playSound(p.getLocation(), "twist.start", 1, 1);
+            p.playSound(p.getLocation(), Sound.BLOCK_BELL_RESONATE, 1, 1);
+        });
 
+        PreStart = (new BukkitRunnable() {         //тут уже таймер с игроками
+            @Override
+            public void run() {
 
-
-
-
-    public void PrepareToStart() {   
-        if (state != GameState.СТАРТ) return;
-        state=GameState.ЭКИПИРОВКА;
-        if (CoolDown != null)  CoolDown.cancel();
-
-
-            getPlayers().stream().forEach((p) -> {  //всех игроков в мире добавля в список и на арену  
-                //players.add(p.getName());
-                p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 5, 1));
-                p.getInventory().clear();
-                p.teleport( zero.clone().add(  (4 + random.nextInt(this.size_x-2)*4) , 1, (4 + random.nextInt(this.size_z-2)*4) ) );
-                //p.playSound(p.getLocation(), "twist.start", 1, 1);
-                p.playSound(p.getLocation(), Sound.BLOCK_BELL_RESONATE, 1, 1);
-            });
-
-
-                PreStart = (new BukkitRunnable() {         //тут уже таймер с игроками
-                @Override
-                public void run() {
-
-                        if ( players.isEmpty() && canreset ) resetGame();
-
-                            if ( players.size() < minPlayers ) {
-                                SendAB(Messages.GetMsg("too_few_cancel_start"));
-                                this.cancel();
-                                if (canreset) resetGame();
-
-                            } else if (prestart==0) {
-                                prestart = 7;
-                                this.cancel();
-                                GameProgress();
-
-                            } else {
-                                SendAB(Messages.GetMsg("prepare_to_game").replace("%s", String.valueOf( prestart )));
-                                //SendSound(Sound.ENTITY_CAT_PURR);
-                                --prestart;
-                            }
-
+                if (players.isEmpty() && canreset) {
+                    resetGame();
                 }
-                }).runTaskTimer(Main.GetInstance(), 0L, 20L);
-        }
-    
- 
 
+               // if (players.size() < minPlayers) {
+                //    SendAB("§d§lСлишкома мало игроков, отмена.");
+               //     this.cancel();
+                //    if (canreset) {
+                //        resetGame();
+                //    }
 
+                //} else 
+                if (prestart == 0) {
+                    prestart = 7;
+                    this.cancel();
+                    GameProgress();
 
+                } else {
+                    SendAB("§aТвист заражается... Осталось §b" + prestart + " §aсек.!");
+                    Oplayer op;
+                    for (Player p : getPlayers()) {
+                        op = PM.getOplayer(p);
+                        op.score.getSideBar().setTitle("§6До старта: §b"+prestart);
+                    }
+                    //SendSound(Sound.ENTITY_CAT_PURR);
+                    --prestart;
+                }
 
-
-
-
-
+            }
+        }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
+    }
 
     public void GameProgress() {
-        if (state != GameState.ЭКИПИРОВКА) return;
-        state=GameState.ИГРА;
-        if (PreStart != null)  PreStart.cancel();
+        if (state != GameState.ЭКИПИРОВКА) {
+            return;
+        }
+        state = GameState.ИГРА;
+        if (PreStart != null) {
+            PreStart.cancel();
+        }
 
+        SendAB("§6ТВИСТ! §aТВИСТ! §bТВИСТ!");
+        SendSound(Sound.ENTITY_CAT_AMBIENT);
 
+        Oplayer op;
+        for (Player p : getPlayers()) {
+            op = PM.getOplayer(p);
+            op.score.getSideBar().setTitle("§6Раунд: §b"+round);
+            for (String n : players.keySet()) {
+                op.score.getSideBar().add(n, "§c0");
+            }
+            op.score.getSideBar().build();
+        }
+        
+        displayColor = true;
+        removeFloor = false;
 
-        SendAB(Messages.GetMsg("start_game"));
-            SendSound(Sound.ENTITY_CAT_AMBIENT);
+        GameTimer = (new BukkitRunnable() {
+            @Override
+            public void run() {
+                final List<Player> list = getPlayers();
 
-            displayColor = true;
-            removeFloor = false;
-
-
-            GameTimer = (new BukkitRunnable() {
-                @Override
-                public void run() {
-
-                    if (displayColor) {
-                        if (RemoveFloor != null)  RemoveFloor.cancel();
-                        showNextColor();                                             //показываем инфо
-                        Bonus_spawn();
-                    } else if (removeFloor) {
-                        if (DysplayColor != null)  DysplayColor.cancel();
-                        MustStayOne();                                              //удаляем все вроме текущего цвета
-                        round++;                                                    //эта же функция возвращает новый пол через 3 сек
-                        Main.sendBsignChanel(name, players.size(), state.displayColor+state.name(), Messages.GetMsg("signs_round_prefix") + Arena.this.round + "§7/§b§l" + Arena.this.maxRound, state);
+                if (displayColor) {
+                    if (RemoveFloor != null) {
+                        RemoveFloor.cancel();
                     }
+                    showNextColor();                                             //показываем инфо
+                    Bonus_spawn();
                     
-                    //тут тикает только во время раундов!!
-                    for (Player p : getPlayers()) {
-                        if ( zero.getBlockY()-p.getLocation().getBlockY() >=3 ) { //ниже полотна на 3 и более блока - упал
-                            loose(p);
+                    Oplayer op;
+                    for (Player p : list) {
+                        if (looser.remove(p.getName())) {
+                            p.teleport(zero.clone().add((4 + random.nextInt(size_x - 2) * 4), 1, (4 + random.nextInt(size_z - 2) * 4)));
+                            p.setGameMode(GameMode.ADVENTURE);
+                            for (Player p1 : list) {
+                                op = PM.getOplayer(p1);
+                                op.score.getSideBar().update(p.getName(), "§c"+players.get(p.getName()));
+                            }
                         }
-                    }
-                    
-                    //this.show - ( this.difficulty * this.round )
-                    if ( players.isEmpty() || playtime >  maxRound*show+20 && canreset) {
-                        SendTitle(Messages.GetMsg("end_cause_timelinit_title"), Messages.GetMsg("end_cause_timelinit_subtitle"));
-                        resetGame();
-                    } else if ( players.size()<=1 || round >= maxRound ) { //последний раунд и есть выжившие - победитель
-                        this.cancel();
-                        endGame();
+                        op = PM.getOplayer(p);
+                        op.score.getSideBar().setTitle("§6Раунд: §b"+round);
                     }
 
-                    playtime++;
 
+                } else if (removeFloor) {
+                    if (DysplayColor != null) {
+                        DysplayColor.cancel();
+                    }
+                    MustStayOne();                                              //удаляем все вроме текущего цвета
+                    round++;                                                    //эта же функция возвращает новый пол через 3 сек
+                    Twist.sendBsignChanel(name, players.size(),
+                            state.displayColor + state.name(),
+                            "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound, state);
                 }
-            }).runTaskTimer(Main.GetInstance(), 0L, 20L);
+
+                //тут тикает только во время раундов!!
+                for (Player p : list) {
+                    if (zero.getBlockY() - p.getLocation().getBlockY() >= 3) { //ниже полотна на 3 и более блока - упал
+                        fall(p);
+                    }
+                }
+
+                //this.show - ( this.difficulty * this.round )
+                if (players.isEmpty() || playtime > maxRound * show + 20 && canreset) {
+                    //SendTitle("Время вышло!", "Игра окончена!");
+                    resetGame();
+                } else if (round >= maxRound) { //последний раунд и есть выжившие - победитель
+                    this.cancel();
+                    endGame();
+                }
+
+                playtime++;
+
+            }
+        }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
 
     }
 
+    public void fall(final Player p) {
+        if (looser.add(p.getName())) {
+            players.replace(p.getName(), players.get(p.getName()+1));
+            p.setGameMode(GameMode.SPECTATOR);
+            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 2, 2));
+            ParticlePlay.deathEffect(p, false);
+        }
+    }
 
+    private void Bonus_spawn() {
 
-
-    private void Bonus_spawn () {
-
-            int ammount=0;
-            //this.arenaLobby.getWorld().getEntities().stream().forEach((e) -> {
-            for (Entity e:arenaLobby.getWorld().getEntities()) {
-                if ( e.getType()!=EntityType.PLAYER && e.getTicksLived()>300) e.remove();
-                if (e.getType() == EntityType.DROPPED_ITEM) ammount++;
+        int ammount = 0;
+        for (Entity e : arenaLobby.getWorld().getEntities()) {
+            if (e.getType() != EntityType.PLAYER && e.getTicksLived() > 300) {
+                e.remove();
             }
-            //});
-    //System.out.println("Bonus_spawn amm:"+ammount+"  limit:"+(this.size_x*this.size_z/8));   
-        //for (int i=0; i<(this.size_x*this.size_z/8); i++) {
-        for (int i=ammount; i<(this.size_x*this.size_z/8); i++) {
+            if (e.getType() == EntityType.DROPPED_ITEM) {
+                ammount++;
+            }
+        }
+        for (int i = ammount; i < (this.size_x * this.size_z / 8); i++) {
 
-            final ItemStack is = new ItemStack(Material.SUNFLOWER, 1 );// AM.bonus.clone();
-            //AM.Set_name(is, String.valueOf(random.nextInt(999)));
+            final ItemStack is = new ItemStack(Material.SUNFLOWER, 1);// AM.bonus.clone();
             final ItemMeta im = is.getItemMeta();
             im.setDisplayName(String.valueOf(random.nextInt(999)));
             is.setItemMeta(im);
-            Item item = this.arenaLobby.getWorld().dropItem( this.zero.clone().add( (4 + random.nextInt(this.size_x-2)*4) , 2, (4 + random.nextInt(this.size_z-2)*4) ), is ); 
+            Item item = this.arenaLobby.getWorld().dropItem(this.zero.clone().add((4 + random.nextInt(this.size_x - 2) * 4), 2, (4 + random.nextInt(this.size_z - 2) * 4)), is);
             item.setVelocity(new Vector(0, 0, 0));
-    //System.out.println("!!!spawn "+item.getLocation());
             item.setPickupDelay(1);
             item.setGravity(false);
         }
 
     }
 
+    public void endGame() {
+        if (state != GameState.ИГРА) {
+            return;
+        }
+        state = GameState.ФИНИШ;
+        if (GameTimer != null) {
+            GameTimer.cancel();
+        }
+        if (DysplayColor != null) {
+            DysplayColor.cancel();
+        }
+        if (RemoveFloor != null) {
+            RemoveFloor.cancel();
+        }
 
+        if (!players.isEmpty()) {
+            SendMessage("");
+            //SendMessage("");
+            SendMessage("");
+            SendMessage("§fПобедители: ");
 
-
-
-    public void endGame() {   
-        if (state != GameState.ИГРА) return;
-        state=GameState.ФИНИШ;
-        if (GameTimer != null)  GameTimer.cancel();
-        if (DysplayColor != null)  DysplayColor.cancel();
-        if (RemoveFloor != null)  RemoveFloor.cancel();
-
-        if (!players.isEmpty())  {
-           SendMessage("");
-           SendMessage("");
-           SendMessage("");
-           SendMessage("§fПобедители: ");
-           
-           getPlayers().stream().forEach((win) -> {
+            getPlayers().stream().forEach((win) -> {
                 win.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 150, 0));
-                //ApiOstrov.sendTitle(win, (Messages.GetMsg("you_win_title")), (Messages.GetMsg("you_win_subtitle")),5,20,5);
                 win.getWorld().playSound(win.getLocation(), "twist.win", 10, 1);
                 win.getWorld().playSound(win.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 10, 1);
-                //SendMessage( "§e" + win.getName()+ " за монетки: §a"+win.getLevel() );
                 firework(win);
                 ApiOstrov.addStat(win, Stat.TW_game);
                 ApiOstrov.addStat(win, Stat.TW_win);
                 //for (int m=0; m<win.getLevel();m++) {
-                    ApiOstrov.addStat(win, Stat.TW_gold, win.getLevel());
+                ApiOstrov.addStat(win, Stat.TW_gold, win.getLevel());
                 //}
                 win.setLevel(0);
-           });
+            });
         }
 
-            this.EndGame = (new BukkitRunnable() {
-                @Override
-                public void run() {
-                    //if ( ending <=0 || Arena.this.players.isEmpty() ) {
-                    if ( ending <=0 ) {
-                         this.cancel();
-                         resetGame();
-                    } else {
-                        for (Player p: getPlayers()) {
-                            UniversalListener.spawnRandomFirework(p.getLocation());
-                        }
+        this.EndGame = (new BukkitRunnable() {
+            @Override
+            public void run() {
+                //if ( ending <=0 || Arena.this.players.isEmpty() ) {
+                if (ending <= 0) {
+                    this.cancel();
+                    resetGame();
+                } else {
+                    for (Player p : getPlayers()) {
+                        UniversalListener.spawnRandomFirework(p.getLocation());
                     }
-                    --ending;
                 }
-            }).runTaskTimer(Main.GetInstance(), 0L, 20L);
+                --ending;
+            }
+        }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
 
-       // Signs.SignsUpdate ( getName(), "§1---", getStateAsString(), "§1 - / -" );
-        Main.sendBsignChanel(getName(), players.size(), "§1 - / -", state.displayColor+state.name(), state);
-
+        // Signs.SignsUpdate ( getName(), "§1---", getStateAsString(), "§1 - / -" );
+        Twist.sendBsignChanel(getName(), players.size(), "§1 - / -", state.displayColor + state.name(), state);
 
     }
 
-
-
-
-
-
-    public void stopShedulers() {  
-        if (this.CoolDown != null)  this.CoolDown.cancel();
-        if (this.PreStart != null)  this.PreStart.cancel();
-        if (this.GameTimer != null)  this.GameTimer.cancel();
-        if (this.EndGame != null)  this.EndGame.cancel();
-        if (this.DysplayColor != null)  this.DysplayColor.cancel();
-        if (this.RemoveFloor != null)  this.RemoveFloor.cancel();
+    public void stopShedulers() {
+        if (this.CoolDown != null) {
+            this.CoolDown.cancel();
+        }
+        if (this.PreStart != null) {
+            this.PreStart.cancel();
+        }
+        if (this.GameTimer != null) {
+            this.GameTimer.cancel();
+        }
+        if (this.EndGame != null) {
+            this.EndGame.cancel();
+        }
+        if (this.DysplayColor != null) {
+            this.DysplayColor.cancel();
+        }
+        if (this.RemoveFloor != null) {
+            this.RemoveFloor.cancel();
+        }
     }
-    
- 
 
-
-
-
-
-
-
-
-
-
-    public void showNextColor () {                           //показать новый цвет, звуки, таймер ->> разрешение на стирание 
+    public void showNextColor() {                           //показать новый цвет, звуки, таймер ->> разрешение на стирание 
 
         nextColor = GenRandColor(nextColor);//new_col; //приготовить следующий цвет
 
-        displayColor=false;
-        removeFloor =false;
+        displayColor = false;
+        removeFloor = false;
 //Ostrov.log("showNextColor "+nextColor+" "+TCUtils.dyeDisplayName(nextColor));
-        ItemStack item = new ItemStack(mat, 1 );
+        ItemStack item = new ItemStack(mat, 1);
         item = TCUtils.changeColor(item, nextColor);
         ItemMeta m = item.getItemMeta();
-        m.setDisplayName( TCUtils.dyeDisplayName(nextColor) );
+        m.displayName(Component.text(TCUtils.dyeDisplayName(nextColor)));
         item.setItemMeta(m);
 
         for (Player p : getPlayers()) {
-            for (byte i=0; i<9; i++) {
+            for (byte i = 0; i < 9; i++) {
                 p.getInventory().setItem(i, item);
                 p.updateInventory();
             }
         }
 
-
-        int sw = this.show - ( this.difficulty * this.round ) ;
-        if ( sw < 5 ) sw = 5; else if ( sw > 80) sw=80;
+        int sw = this.show - (this.difficulty * this.round);
+        if (sw < 5) {
+            sw = 5;
+        } else if (sw > 80) {
+            sw = 80;
+        }
 
         DysplayColor = (new BukkitRunnable() {
 
-            byte i=8;
+            byte i = 8;
+
             @Override
             public void run() {
 
                 getPlayers().stream().forEach((p) -> {
 
-
-                /*    BossBarAPI.removeAllBars(p);
-                    BossBarAPI.addBar( p,  new TextComponent( Main.DyeToString(curr_col)[1]+ Main.DyeToString(curr_col)[2] + "!"),
-                        BossBarAPI.Color.YELLOW,  BossBarAPI.Style.NOTCHED_20,  1.0f,  20,  2 );*/
-
-                    p.getInventory().setItem(i, AM.no_mat.clone() );
+                    p.getInventory().setItem(i, ItemUtils.air);
                     p.updateInventory();
 
                     switch (i) {
-                        case 8: p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP , 1, 0);
-                        case 5: p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP , 1, 0);
-                        case 2: p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP , 1, 0);
+                        case 8:
+                            p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 0);
+                        case 5:
+                            p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 0);
+                        case 2:
+                            p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 0);
                     }
 
                 });
 
                 i--;
-                if ( i < 0 ) {
+                if (i < 0) {
                     displayColor = false;
                     removeFloor = true;
                     this.cancel();
                 }
 
             }
-        }).runTaskTimer( Main.GetInstance(), 20L , sw );
-
+        }).runTaskTimer(Twist.GetInstance(), 20L, sw);
 
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // ------------------------------------  удалить квадраты/ вернуть квадраты ------------------------------------------------
-
     private void MustStayOne() {                     //удал все цвета, кроме текущего
-        displayColor=false;
-        removeFloor =false;
-        for (byte x=0; x<size_x; x++) {
-            for (byte z=0; z<size_z; z++) {
+        displayColor = false;
+        removeFloor = false;
+        for (byte x = 0; x < size_x; x++) {
+            for (byte z = 0; z < size_z; z++) {
 
-               if ( colormap.get(x*size_x+z) != nextColor ) {
-                   FillPlotAir( x, z );
-               }
+                if (colormap.get(x * size_x + z) != nextColor) {
+                    FillPlotAir(x, z);
+                }
 
             }
-        }            
+        }
 
         RemoveFloor = (new BukkitRunnable() {
             @Override
             public void run() {
                 BackFloor();
-                displayColor=true;
-                removeFloor =false;
+                displayColor = true;
+                removeFloor = false;
             }
-        }).runTaskLater(Main.GetInstance(), 60 );
+        }).runTaskLater(Twist.GetInstance(), 60);
 
     }
-
-
-
 
     private void BackFloor() {                     //вернуть пол
 
         DyeColor previos;
         DyeColor newColor;
         int idx;
-        
-        for (byte x=0; x<size_x; x++) {
-            for (byte z=0; z<size_z; z++) {
+
+        for (byte x = 0; x < size_x; x++) {
+            for (byte z = 0; z < size_z; z++) {
                 idx = x * size_x + z;
 
                 previos = colormap.get(idx);
-                if ( previos != nextColor ) { //плот менялся на воздух
+                if (previos != nextColor) { //плот менялся на воздух
                     newColor = GenRandColor(previos); //рандомный цает, отличный от старого
-                    colormap.put ( idx, newColor );
-                    FillPlotMat ( x , z, newColor );
+                    colormap.put(idx, newColor);
+                    FillPlotMat(x, z, newColor);
                 }
 
             }
-        }            
+        }
 
+        
     }
 
-
-
-
-    private void FillPlotMat ( byte plot_x, byte plot_z, DyeColor color ) {
+    private void FillPlotMat(byte plot_x, byte plot_z, DyeColor color) {
         int x = zero.getBlockX() + plot_x * 4;
         int y = zero.getBlockY();
         int z = zero.getBlockZ() + plot_z * 4;
         mat = TCUtils.changeColor(mat, color);//Material.valueOf(color.toString()+"_"+mat_base);
-        final BlockData data=mat.createBlockData();
-        final net.minecraft.world.level.block.state.IBlockData ibdColoredWool = ((CraftBlockData)data).getState(); //((CraftBlock)block).getNMS();
+        final BlockData data = mat.createBlockData();
+        final net.minecraft.world.level.block.state.IBlockData ibdColoredWool = ((CraftBlockData) data).getState(); //((CraftBlock)block).getNMS();
         for (byte x_ = 0; x_ < 4; x_++) {
             for (byte z_ = 0; z_ < 4; z_++) {
-                mutableBlockPosition.d(x+x_, y, z+z_);
+                mutableBlockPosition.d(x + x_, y, z + z_);
                 CraftBlock.setTypeAndData(nmsWorldServer, mutableBlockPosition, ibdDataAir, ibdColoredWool, false);
             }
         }
     }
 
-
-    private void FillPlotAir ( byte plot_x, byte plot_z ) {
+    private void FillPlotAir(byte plot_x, byte plot_z) {
         int x = zero.getBlockX() + plot_x * 4;
         int y = zero.getBlockY();
         int z = zero.getBlockZ() + plot_z * 4;
         final net.minecraft.world.level.block.state.IBlockData ibdDataPrevios = nmsWorldServer.a_(mutableBlockPosition);
         for (byte x_ = 0; x_ < 4; x_++) {
             for (byte z_ = 0; z_ < 4; z_++) {
-                mutableBlockPosition.d(x+x_, y, z+z_);
+                mutableBlockPosition.d(x + x_, y, z + z_);
                 CraftBlock.setTypeAndData(nmsWorldServer, mutableBlockPosition, ibdDataPrevios, ibdDataAir, false);
             }
         }
 
     }
 
-
 // ------------------------------------  Генерация ------------------------------------------------
-
     private void GenerateNewFloor() {
         colormap.clear();
 
-        for (byte x=0; x<size_x; x++) {
-            for (byte z=0; z<size_z; z++) {
+        for (byte x = 0; x < size_x; x++) {
+            for (byte z = 0; z < size_z; z++) {
 
-               LoadChunk ( x , z );          //!!! создание карты чанков для обновления и их загрузка !!!
+                LoadChunk(x, z);          //!!! создание карты чанков для обновления и их загрузка !!!
 
-               DyeColor col = GenRandColor(nextColor); //следущий цвет должен отличаться
-               nextColor = col;
-               colormap.put(x * size_x + z, col );
+                DyeColor col = GenRandColor(nextColor); //следущий цвет должен отличаться
+                nextColor = col;
+                colormap.put(x * size_x + z, col);
 //Ostrov.log("generate idx="+(x * size_x + z)+" col="+col);
-               FillPlotMat ( x , z, col );  //заполняем плоты случ цветом
-               FillDown ( x , z );          //заполняем низ
-
-            }
-        }            
-
-
-    }
-
-
-    private void LoadChunk ( byte plot_x, byte plot_z ) {
-
-        int x = zero.getBlockX() + plot_x * 4;  //координата блока Х на углу плота
-        int z = zero.getBlockZ() + plot_z * 4; //координата блока Z на углу плота
-
-
-        for (byte x_ = 0; x_ < 4; x_++) {
-            for (byte z_ = 0; z_ < 4; z_++) {
-
-                final Chunk ch = zero.getWorld().getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );      //берёт стандартный чанк на этой же координате
-                //String t = String.valueOf(ch.getX()) + "x" + String.valueOf(ch.getZ());
-
-                    //if ( !this.chunksHash.contains(t) ) {
-                    //       this.chunksHash.add(t);
-                         //   this.chunks.add(ch.getX()+":"+ch.getZ());
-                            if (!ch.isLoaded()) ch.load();
-                   // }
+                FillPlotMat(x, z, col);  //заполняем плоты случ цветом
+                FillDown(x, z);          //заполняем низ
 
             }
         }
 
     }
 
+    private void LoadChunk(byte plot_x, byte plot_z) {
 
+        int x = zero.getBlockX() + plot_x * 4;  //координата блока Х на углу плота
+        int z = zero.getBlockZ() + plot_z * 4; //координата блока Z на углу плота
+
+        for (byte x_ = 0; x_ < 4; x_++) {
+            for (byte z_ = 0; z_ < 4; z_++) {
+
+                final Chunk ch = zero.getWorld().getChunkAt((x + x_) >> 4, (z + z_) >> 4);      //берёт стандартный чанк на этой же координате
+                //String t = String.valueOf(ch.getX()) + "x" + String.valueOf(ch.getZ());
+
+                //if ( !this.chunksHash.contains(t) ) {
+                //       this.chunksHash.add(t);
+                //   this.chunks.add(ch.getX()+":"+ch.getZ());
+                if (!ch.isLoaded()) {
+                    ch.load();
+                }
+                // }
+
+            }
+        }
+
+    }
 
     public void ResetFloor() {
 
-            for (byte x=0; x<this.size_x; x++) {
-                for (byte z=0; z<this.size_z; z++) {
-                   FillPlotAir(x , z );
-                   FillDownAir(x, z);  
-                }
+        for (byte x = 0; x < this.size_x; x++) {
+            for (byte z = 0; z < this.size_z; z++) {
+                FillPlotAir(x, z);
+                FillDownAir(x, z);
             }
+        }
 
         //UpdateChunks();
+        //this.chunks.clear();
+        // this.chunksHash.clear();
+        this.colormap.clear();
 
-            //this.chunks.clear();
-           // this.chunksHash.clear();
-            this.colormap.clear();
+    }
 
-    }    
-
-
-
-
-
-
-    private void FillDown ( byte plot_x, byte plot_z ) {
+    private void FillDown(byte plot_x, byte plot_z) {
 
         int x = zero.getBlockX() + plot_x * 4;  //координата блока Х на углу плота
         int y = zero.getBlockY() - 5;           //координата высоты (для пола -5)
         int z = zero.getBlockZ() + plot_z * 4; //координата блока Z на углу плота
 
-        final net.minecraft.world.level.block.state.IBlockData ibdDataDown = ((CraftBlockData)Material.GLOWSTONE.createBlockData()).getState();
+        final net.minecraft.world.level.block.state.IBlockData ibdDataDown = ((CraftBlockData) Material.GLOWSTONE.createBlockData()).getState();
         //net.minecraft.server.v1_16_R3.World world = ( (CraftWorld) arenaLobby.getWorld() ).getHandle(); //берёт NMS мир
         //IBlockData ibd = net.minecraft.server.v1_16_R3.Block.getByCombinedId( this.down );     //создаёт ibd код для GLOWSTONE
         final net.minecraft.world.level.block.state.IBlockData ibdDataPrevios = nmsWorldServer.a_(mutableBlockPosition);
-        
+
         for (byte x_ = 0; x_ < 4; x_++) {
             for (byte z_ = 0; z_ < 4; z_++) {
                 //net.minecraft.server.v1_16_R3.Chunk c = c_world.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );   //берёт NMS чанк
@@ -735,274 +764,157 @@ public class Arena {
                 //nmsWorldServer.d( (x+x_) >> 4, (z+z_) >> 4 ).setType(new net.minecraft.core.BlockPosition( (x+x_), y, (z+z_) ) , ibdDataDown , false, false );                                    //вносит в него ibd по blockposition
                 //net.minecraft.world.level.chunk.Chunk chunk = nmsWorldServer.d( (x+x_) >> 4, (z+z_) >> 4 );
                 //chunk.setBlockState(new net.minecraft.core.BlockPosition( (x+x_), y, (z+z_) ) , ibdDataDown , false, false );                                    //вносит в него ibd по blockposition
-                mutableBlockPosition.d(x+x_, y, z+z_);
+                mutableBlockPosition.d(x + x_, y, z + z_);
                 CraftBlock.setTypeAndData(nmsWorldServer, mutableBlockPosition, ibdDataPrevios, ibdDataDown, false);
             }
         }
 
     }
 
-
-
-    private void FillDownAir ( byte plot_x, byte plot_z ) {
+    private void FillDownAir(byte plot_x, byte plot_z) {
 
         int x = this.zero.getBlockX() + plot_x * 4;
         int y = this.zero.getBlockY() - 5;
         int z = this.zero.getBlockZ() + plot_z * 4;
 
-
         //net.minecraft.server.v1_16_R3.World world = ( (CraftWorld) arenaLobby.getWorld() ).getHandle(); //берёт NMS мир
         //IBlockData ibd = net.minecraft.server.v1_16_R3.Block.getByCombinedId( Material.AIR.getId() );     //создаёт ibd код для GLOWSTONE
-
         for (byte x_ = 0; x_ < 4; x_++) {
             for (byte z_ = 0; z_ < 4; z_++) {
                 //net.minecraft.server.v1_16_R3.Chunk c = c_world.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 );   //берёт NMS чанк
                 //nmsWorldServer.getChunkAt( (x+x_) >> 4, (z+z_) >> 4 ).a( new BlockPosition( (x+x_), y, (z+z_) ) , ibdDataAir );                                    //вносит в него ibd по blockposition
-                net.minecraft.world.level.chunk.Chunk chunk = nmsWorldServer.d( (x+x_) >> 4, (z+z_) >> 4 );
-                chunk.setBlockState(new net.minecraft.core.BlockPosition( (x+x_), y, (z+z_) ) , ibdDataAir , false, false );                                    //вносит в него ibd по blockposition
+                net.minecraft.world.level.chunk.Chunk chunk = nmsWorldServer.d((x + x_) >> 4, (z + z_) >> 4);
+                chunk.setBlockState(new net.minecraft.core.BlockPosition((x + x_), y, (z + z_)), ibdDataAir, false, false);                                    //вносит в него ibd по blockposition
             }
         }
 
     }
 // -----------------------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // xxxxxxxxxxxxxxxxxxxxxxxxxxx  Обработчик игроков xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
     public void addPlayers(Player p) {
-        if ( IsJonable() ) {
+        if (IsJonable()) {
             p.teleport(getLobby());
-            players.add(p.getName());
-            if ( players.size() < minPlayers ) {
-                SendAB ( Messages.GetMsg("players_need_for_start").replace("%n", String.valueOf( minPlayers-players.size() )) ); 
+            players.put(p.getName(), 0);
+            if (players.size()==1) {
+                startCountdown();
+            } else {
+                int cd = cdCounter/players.size();
+                if (cd < cdCounter) {
+                   cdCounter = cd;
+                   SendAB("§2§lВремя до старта игры уменьшено!");
+                }
             }
-            
+
             //p.getInventory().clear();
-            p.getInventory().setItem(0, new ItemStack(Material.AIR));
-            p.getInventory().setItem(7, new ItemStack(Material.AIR));
-            p.getInventory().setItem(8, UniversalListener.leaveArena.clone());
-            p.updateInventory();
+            p.getInventory().setItem(0, ItemUtils.air);
+            p.getInventory().setItem(7, ItemUtils.air);
+            MG.leaveArena.giveForce(p);//p.getInventory().setItem(8, UniversalListener.leaveArena.clone());
+            //p.updateInventory();
             //Signs.SignsUpdate(name, Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1 - / -" );
-            Main.sendBsignChanel(name, players.size(), Messages.GetMsg("signs_line_3_prefix")+ players.size(), state.displayColor+state.name(), GameState.ОЖИДАНИЕ);
-            if ( players.size()>=minPlayers ) startCountdown();
+            Twist.sendBsignChanel(name, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), GameState.ОЖИДАНИЕ);
+            //if (players.size() < minPlayers) {
+            //    SendAB("§6Для старта нужно еще §b" + (minPlayers - players.size()) + " §6чел.!");
+           // }
+            //if (players.size() >= minPlayers) {
+           //     startCountdown();
+            //}
+            PM.getOplayer(p).tabSuffix(" §5"+name, p);
         }
     }
 
+    public void PlayerExit(Player p) {
 
-
-    public void PlayerExit (Player p) {
-
-        if ( IsJonable() ) {                //если ожидание или первый таёмер, т.е. не внесён в players
+        if (IsJonable()) {                //если ожидание или первый таёмер, т.е. не внесён в players
             players.remove(p.getName());         //перестраховка
-                if (players.size() < minPlayers && this.CoolDown != null) {      //если был запущен таймер
-                    this.CoolDown.cancel();
-                    Arena.this.cdCounter = 40;
-                    SendAB(Messages.GetMsg("no_enough_players"));
-                    state=GameState.ОЖИДАНИЕ;
-                }
-                //new ActionbarTitleObject (Messages.GetMsg("arena_exit")).send(p);
-                //ApiOstrov.sendActionBarDirect(p, Messages.GetMsg("arena_exit"));
-                //p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
-                //Signs.SignsUpdate( getName(),Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1 - / -" );
-                Main.sendBsignChanel(name, players.size(), Messages.GetMsg("signs_line_3_prefix")+ players.size(), state.displayColor+state.name(), state);
+            if (players.isEmpty() && CoolDown != null) {      //если был запущен таймер
+                CoolDown.cancel();
+                cdCounter = 40;
+            //    SendAB("§d§lНедостаточно участников, счётчик остановлен.");
+            //    state = GameState.ОЖИДАНИЕ;
+            }
+            //new ActionbarTitleObject (Messages.GetMsg("arena_exit")).send(p);
+            //ApiOstrov.sendActionBarDirect(p, Messages.GetMsg("arena_exit"));
+            //p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
+            //Signs.SignsUpdate( getName(),Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1 - / -" );
+            Twist.sendBsignChanel(name, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), state);
 
         } else {                                            //выход во время игры-возможно только через отключение
-            if ( players.remove(p.getName()) ) {
-               // players.remove(p.getName());
+            if (players.remove(p.getName()) != null) {
+                // players.remove(p.getName());
                 //if ( players.size() ==1 ) endGame();    
                 //Signs.SignsUpdate( getName(),  Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + this.round + "§7/§b§l" + this.maxRound  );
-                Main.sendBsignChanel(name, players.size(), state.displayColor+state.name(), Messages.GetMsg("signs_round_prefix") + this.round + "§7/§b§l" + this.maxRound,  state);
+                Twist.sendBsignChanel(name, players.size(), state.displayColor + state.name(), "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound, state);
+                Oplayer op;
+                for (Player pl : getPlayers()) {
+                    op = PM.getOplayer(pl);
+                    op.score.getSideBar().update(name, "§4§o✖");
+                }
             }
         }
 
+    }
 
-        }
-
-
-
-    public void loose (final Player p) {
+   /* public void loose(final Player p) {
 
         if (players.remove(p.getName())) {
             looser.add(p.getName());
 
             if (canreset) {
-                //p.getInventory().clear();
-                //p.updateInventory();
                 spectate(p);
                 DonatEffect.spawnRandomFirework(p.getLocation());
-                
+
                 p.getWorld().playSound(p.getLocation(), "twist.fall_down", 10, 1);
-                ApiOstrov.sendTitle(p,  Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
+                ApiOstrov.sendTitle(p, "", "§4Вы проиграли!", 5, 10, 5);
                 ApiOstrov.addStat(p, Stat.TW_game);
                 ApiOstrov.addStat(p, Stat.TW_loose);
-
-                //p.getWorld().playSound(p.getLocation(), Sound.ENTITY_DOLPHIN_DEATH, 10, 1);
-        //System.err.println( "  p.getLocation().getBlockY() "+p.getLocation().getBlockY()+ " zero.getBlockY() "+(zero.getBlockY()) );
-
-                   /* new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            if ( p.getLocation().getBlockY() < (zero.getBlockY()) && state==GameState.ИГРА ) { //фикс от случайного спавна на арене
-                                for (byte z= 0; z<=6; z++) {
-                                    PigZombie pz = p.getWorld().spawn( p.getLocation().clone().add( z-3,1,z-3), PigZombie.class);
-                                    pz.setAngry(true);
-                                    pz.setCustomName(Messages.GetMsg("pig_zombie_name"));
-                                    pz.getEquipment().setItemInMainHand(new ItemStack(Material.CARROT, 1));
-                                    pz.setTarget(p);
-                                }
-                            }
-                        }
-                    }.runTaskLater(Main.GetInstance(), 2L); */
-            }     
+            }
         }
-   /* if ( !players.contains(p.getName()) ) return;
 
-        players.remove(p.getName());
-        looser.add(p.getName());
+    }*/
 
-        if (canreset) {
-            p.getInventory().clear();
-            p.updateInventory();
-            p.getWorld().playSound(p.getLocation(), "twist.fall_down", 10, 1);
-            p.getWorld().playSound(p.getLocation(), Sound.ENTITY_DOLPHIN_DEATH, 10, 1);
-    //System.err.println( "  p.getLocation().getBlockY() "+p.getLocation().getBlockY()+ " zero.getBlockY() "+(zero.getBlockY()) );
-
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        if ( p.getLocation().getBlockY() < (zero.getBlockY()) && state==GameState.ИГРА ) { //фикс от случайного спавна на арене
-                            for (byte z= 0; z<=6; z++) {
-                                PigZombie pz = p.getWorld().spawn( p.getLocation().clone().add( z-3,1,z-3), PigZombie.class);
-                                pz.setAngry(true);
-                                pz.setCustomName(Messages.GetMsg("pig_zombie_name"));
-                                pz.getEquipment().setItemInMainHand(new ItemStack(Material.CARROT, 1));
-                                pz.setTarget(p);
-                            }
-                        }
-                    }
-                }.runTaskLater(Main.GetInstance(), 2L); 
-        }
-        ApiOstrov.sendTitle(p,  Messages.GetMsg("you_loose_title"), Messages.GetMsg("you_loose_subtitle"),5,10,5);
-        ApiOstrov.addStat(p, Stat.TW_game);
-        ApiOstrov.addStat(p, Stat.TW_loose);*/
-
-    }
-
-    
 // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-    public void spectate (final Player p) {
+    public void spectate(final Player p) {
         UniversalListener.spectatorPrepare(p);
         p.teleport(zero.clone().add(0, 5, 0));
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // **************************  GET / SET *******************************
-
-    
-    
     public boolean IsInGame(Player p) {
-        return players.contains(p.getName());
+        return players.containsKey(p.getName());
     }
-    
-   // public boolean IsLooser(String nik) {
-  //      return looser.contains(nik);
- //   }
-    
-   // public boolean IsLooserLock(Player p) {
-//System.out.println("IsLooserLock looser:"+this.looser.contains(p.getName())+" p(y):"+p.getLocation().getBlockY()+" arena(y)");        
-  //      return this.looser.contains(p.getName()) && p.getLocation().getBlockY() < this.zero.getBlockY();
-  //  }
-    
+
     public boolean IsJonable() {
-        return ( state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ );
+        return (state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ);
     }
-    
-
-    
-
 
     public String getName() {
         return this.name;
     }
 
-
-
-   
+    /*
     public String getScoreTimer() {
-        switch (state) {
-            case ОЖИДАНИЕ:
-                return Messages.GetMsg("score_waiting").replace("%s", String.valueOf(this.minPlayers-this.players.size()));
-            case СТАРТ:
-                return Messages.GetMsg("score_cooldown").replace("%s", String.valueOf(this.cdCounter));
-            case ЭКИПИРОВКА:
-                return Messages.GetMsg("score_prestart");
-            case ИГРА:
-                return Messages.GetMsg("score_ingame").replaceAll("%r", String.valueOf(this.round)).replaceAll("%m", String.valueOf(this.maxRound)).replace("%t", Main.getTime(this.playtime) );
-            default:
-                return state.displayColor+state.name();
-        }
-   }
-   
-    public String GetScoreStatus (Player p) {
-        if (state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ ) {
-            return "§f"+p.getName();
+        return switch (state) {
+            case ОЖИДАНИЕ -> Messages.GetMsg("score_waiting").replace("%s", String.valueOf(this.minPlayers-this.players.size()));
+            case СТАРТ -> Messages.GetMsg("score_cooldown").replace("%s", String.valueOf(this.cdCounter));
+            case ЭКИПИРОВКА -> Messages.GetMsg("score_prestart");
+            case ИГРА -> Messages.GetMsg("score_ingame").replaceAll("%r", String.valueOf(this.round)).replaceAll("%m", String.valueOf(this.maxRound)).replace("%t", Twist.getTime(this.playtime) );
+            default -> state.displayColor+state.name();
+        };
+   }*/
+   /* public String GetScoreStatus(Player p) {
+        if (state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ) {
+            return "§f" + p.getName();
         } else if (players.contains(p.getName())) {
             //return "§2§o✔ "+ColorUtils.DyeToString(curr_color).substring(0,2)+p.getName();
-            return "§2§o✔ "+TCUtils.toChat(nextColor)+p.getName();
+            return "§2§o✔ " + TCUtils.toChat(nextColor) + p.getName();
         } else if (this.looser.contains(p.getName())) {
-            return "§4§o✖ §7"+p.getName();
+            return "§4§o✖ §7" + p.getName();
         } else {
-            return "§7(зритель) "+p.getName();
+            return "§7(зритель) " + p.getName();
         }
-    }
-    
-    
-    
-    
-    
+    }*/
+
     public Location getZero() {
         return this.zero;
     }
@@ -1014,222 +926,143 @@ public class Arena {
     public void setLobby(Location location) {
         this.arenaLobby = location;
     }
-    
-    public String getMode() {
-        return this.mode;
-    }
-   
+
+    //public String getMode() {
+    //     return this.mode;
+    // }
     public byte getSize_x() {
-	return this.size_x;
+        return this.size_x;
     }
 
     public byte getSize_z() {
-	return this.size_z;
+        return this.size_z;
     }
 
     public byte getDownId() {
-	return this.down;
+        return this.down;
     }
-    
+
     public byte getShow() {
-	return this.show;
+        return this.show;
     }
 
-    public void setShow( byte d ) {
-	this.show = d;
+    public void setShow(byte d) {
+        this.show = d;
     }
-    
+
     public byte getDifficulty() {
-	return this.difficulty;
+        return this.difficulty;
     }
 
-    public void setDifficulty( byte d ) {
-	this.difficulty = d;
+    public void setDifficulty(byte d) {
+        this.difficulty = d;
     }
 
     public byte getMaxRound() {
-	return this.maxRound;
+        return this.maxRound;
     }
 
-    public void setMaxRound( byte d ) {
-	this.maxRound = d;
-    }
-    
-    public byte getMinPlayers() {
-        return this.minPlayers;
-    }
-    
-    public void setMinPlayers( byte i ) {
-         this.minPlayers=i;
-    }
-
-    public byte getForce() {
-	return this.playersForForcestart;
-    }
-
-    public void setForce( byte d ) {
-	this.playersForForcestart = d;
+    public void setMaxRound(byte d) {
+        this.maxRound = d;
     }
 
 
 // *********************************************************************
-
-
-
-    
-    
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // -------------------------------  Вспомогательные --------------------------
-    
- 
-
-
     public void SendAB(String text) {
-            arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
-                //new ActionbarTitleObject (text).send(p);
-                ApiOstrov.sendActionBarDirect(p, text);
-            });
-        }
+        arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
+            //new ActionbarTitleObject (text).send(p);
+            ApiOstrov.sendActionBarDirect(p, text);
+        });
+    }
 
     public void SendMessage(String text) {
-            arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
-                p.sendMessage(text);
-            });
-        }
+        arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
+            p.sendMessage(text);
+        });
+    }
 
     public void SendSound(Sound s) {
-            arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
-                p.playSound(p.getLocation(), s , 5.0F, 5.0F);
-            });
-        }
+        arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
+            p.playSound(p.getLocation(), s, 5.0F, 5.0F);
+        });
+    }
 
     public void SendSound(String s) {
-            arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
-                p.playSound(p.getLocation(), s , 1, 1);
-            });
-        }
+        arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
+            p.playSound(p.getLocation(), s, 1, 1);
+        });
+    }
 
     public void SendTitle(String t, String st) {
-            arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
-                ApiOstrov.sendTitle(p,  t, st, 2,10,2);
-    //(new TitleObject ((t), TitleObject.TitleType.TITLE)).setFadeIn(20).setStay(20).setFadeOut(5).send(p);
-    //(new TitleObject ((st), TitleObject.TitleType.SUBTITLE)).setFadeIn(20).setStay(20).setFadeOut(5).send(p);
-            });
-        }
+        arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
+            ApiOstrov.sendTitle(p, t, st, 2, 10, 2);
+            //(new TitleObject ((t), TitleObject.TitleType.TITLE)).setFadeIn(20).setStay(20).setFadeOut(5).send(p);
+            //(new TitleObject ((st), TitleObject.TitleType.SUBTITLE)).setFadeIn(20).setStay(20).setFadeOut(5).send(p);
+        });
+    }
 
-
-
-
-    private DyeColor  GenRandColor (DyeColor old) {
+    private DyeColor GenRandColor(DyeColor old) {
         DyeColor dc = old;
-        for (byte i=0; i<15; i++) {                                         //делаем 15 попыток подобрать уникальный цвет
-            dc = Main.allowedColors.get(random.nextInt( Main.allowedColors.size()-1 ));     //генерируем позицию цвета в списке разрешенных
-            if ( dc != old) break;   //если старый цвет не совпадает с новым, отдаём
+        for (byte i = 0; i < 15; i++) {                                         //делаем 15 попыток подобрать уникальный цвет
+            dc = Twist.allowedColors.get(random.nextInt(Twist.allowedColors.size() - 1));     //генерируем позицию цвета в списке разрешенных
+            if (dc != old) {
+                break;   //если старый цвет не совпадает с новым, отдаём
+            }
         }
 //Ostrov.log("GenRandColor old="+old+" new="+dc);
         return dc;//Main.allowedColors.get( pos );                               //если не подобрали, отдаём, что есть
-    } 
-
-
-
-
+    }
 
     ///салютики
-        private static void firework (Player p) {
+    private static void firework(Player p) {
 
-            for (int i = 0; i < 6; ++i) {                           //салютики
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                Random random = new Random();
-                Firework firework = (Firework) p.getWorld().spawn(p.getLocation().clone().add(0, 5, 0), Firework.class);
-                FireworkMeta fireworkmeta = firework.getFireworkMeta();
-                FireworkEffect fireworkeffect = FireworkEffect.builder().flicker(random.nextBoolean()).withColor(Color.fromBGR(random.nextInt(256), random.nextInt(256), random.nextInt(256))).withFade(Color.fromBGR(random.nextInt(256), random.nextInt(256), random.nextInt(256))).with(FireworkEffect.Type.STAR).trail(true).build();
+        for (int i = 0; i < 6; ++i) {                           //салютики
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    Random random = new Random();
+                    Firework firework = (Firework) p.getWorld().spawn(p.getLocation().clone().add(0, 5, 0), Firework.class);
+                    FireworkMeta fireworkmeta = firework.getFireworkMeta();
+                    FireworkEffect fireworkeffect = FireworkEffect.builder().flicker(random.nextBoolean()).withColor(Color.fromBGR(random.nextInt(256), random.nextInt(256), random.nextInt(256))).withFade(Color.fromBGR(random.nextInt(256), random.nextInt(256), random.nextInt(256))).with(FireworkEffect.Type.STAR).trail(true).build();
 
-                fireworkmeta.addEffect(fireworkeffect);
-                firework.setFireworkMeta(fireworkmeta);   
-                    }}.runTaskLater(Main.GetInstance(), (long)(i * 5));}
+                    fireworkmeta.addEffect(fireworkeffect);
+                    firework.setFireworkMeta(fireworkmeta);
+                }
+            }.runTaskLater(Twist.GetInstance(), (long) (i * 5));
         }
-
-
-/*
-
-     private void StartMusic () {
-
-        try {
-            if (Main.noteblock) {
-
-                File[] files = new File(Main.GetInstance().getDataFolder().getPath() + "/songs/").listFiles();
-                List<File> songs = new ArrayList<>();
-                for (File f : files)
-                    if (f.getName().contains(".nbs")) songs.add(f);
-                File song = songs.get(new Random().nextInt(songs.size()));
-                Song s = NBSDecoder.parse(song);
-
-                songPlayer = new RadioSongPlayer(s);
-                songPlayer.setAutoDestroy(true);
-
-                songPlayer.setPlaying(true);
-
-                players.stream().forEach((p) -> { songPlayer.addPlayer(p); });
-
-                songPlayer.setVolume((byte) 60);
-                songPlayer.setFadeStart((byte) 25);
-            }
-        } catch (NullPointerException e){}
-
     }
-
-
-    private void StopMusic () {
-        try {
-            if (Main.noteblock) {
-                songPlayer.setPlaying(false);
-                this.songPlayer.destroy(); 
-            }
-        } catch (NullPointerException e){}
-    }
-
-   */
- 
-
-
-
-
-
-
-
-
-
 
     public List<Player> getPlayers() {
-        final List<Player>list=new ArrayList<>();
-        for (String nik:players) {
-            if (Bukkit.getPlayerExact(nik)!=null) list.add(Bukkit.getPlayerExact(nik));
+        final List<Player> list = new ArrayList<>();
+        for (String nik : players.keySet()) {
+            if (Bukkit.getPlayerExact(nik) != null) {
+                list.add(Bukkit.getPlayerExact(nik));
+            }
         }
         return list;
     }
 
+    @Override
+    public Game game() {
+        return Game.TW;
+    }
+
+    @Override
+    public boolean hasPlayer(final Player p) {
+        return players.containsKey(p.getName());
+    }
+
+    @Override
+    public String joinCmd() {
+        return "tw join ";
+    }
+
+    @Override
+    public String leaveCmd() {
+        return "tw leave";
+    }
 
 
 
-
-
-
-    
 }

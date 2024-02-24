@@ -1,9 +1,9 @@
 name: Twist
-main: ru.ostrov77.twist.Main
+main: ru.ostrov77.twist.Twist
 version: 2.0
 api-version: 1.16
 author: komiss77
-depend: [Ostrov]
+depend: [Ostrov, MiniGames]
 softdepend: [NoteBlockAPI]
 load: POSTWORLD
 commands:
