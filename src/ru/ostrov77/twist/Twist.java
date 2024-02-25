@@ -4,6 +4,7 @@ import ru.ostrov77.minigames.UniversalListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -20,16 +21,13 @@ public class Twist extends JavaPlugin implements Listener {
 
     public static Twist instance;
     public static String Prefix="§5Твист: §f";
-    
-    public static boolean shutdown = false;
-    
+   
     public static boolean noteblock = false;
     
-  //  public static String cmd = "";
     public static float speed = 0.3F;
    // public static String pack_url = "http://ostrov77.ru/uploads/resourcepacks/twist.zip";
         
-    public static ArrayList<DyeColor> allowedColors = new ArrayList<>(Arrays.asList( 
+    public static List<DyeColor> allowedColors = List.of(
             DyeColor.BLACK,
             DyeColor.BLUE,
             DyeColor.BROWN,
@@ -46,7 +44,7 @@ public class Twist extends JavaPlugin implements Listener {
             DyeColor.RED,
             DyeColor.WHITE,
             DyeColor.YELLOW 
-    ));
+    );
     public static HashMap <String, Long> cooldown = new HashMap();
     
     
@@ -87,7 +85,6 @@ public class Twist extends JavaPlugin implements Listener {
         
 @Override
 	public void onDisable() {
-             shutdown = true;
   
 ////////////////////////////////////////////////////////////////////////////////
             AM.getAllArenas().keySet().stream().forEach((arenaName) -> {

@@ -15,7 +15,6 @@ import org.bukkit.Chunk;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
 import org.bukkit.FireworkEffect;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -42,8 +41,7 @@ import ru.komiss77.enums.GameState;
 import ru.komiss77.enums.Stat;
 import ru.komiss77.modules.player.Oplayer;
 import ru.komiss77.modules.player.PM;
-import ru.komiss77.objects.CaseInsensitiveMap;
-import ru.komiss77.utils.DonatEffect;
+import ru.komiss77.scoreboard.SideBar;
 import ru.komiss77.utils.ItemUtils;
 import ru.komiss77.utils.ParticlePlay;
 import ru.komiss77.utils.TCUtils;
@@ -52,10 +50,9 @@ import ru.ostrov77.minigames.MG;
 
 public class Arena implements IArena {
 
-    private String name;
+    private final String arenaName;
     public Location arenaLobby;
     public Location zero;
-    //private String mode;    
     private Material mat = Material.WHITE_WOOL;
     private final byte size_x;
     private final byte size_z;
@@ -63,31 +60,20 @@ public class Arena implements IArena {
     private byte show;
     private byte difficulty;
     private byte maxRound;
-    //private byte minPlayers;
-    //private byte playersForForcestart;
 
-    private BukkitTask CoolDown;
-    private int cdCounter;
-    private BukkitTask PreStart;
-    private int prestart;
-    private BukkitTask GameTimer;
-    private int playtime;
-    private BukkitTask EndGame;
-    private int ending;
-    private BukkitTask DysplayColor;
-    private BukkitTask RemoveFloor;
+    private BukkitTask CoolDown, PreStart, GameTimer, EndGame, DysplayColor,RemoveFloor;
+    private int cdCounter, prestart, playtime, ending;
 
     private boolean canreset;
 
     private byte round;
     private DyeColor nextColor;
 
-    private boolean displayColor;
-    public boolean removeFloor;
+    private boolean displayColor, removeFloor;
 
     public Map<String, Integer> players = new HashMap<>();
     public Set<String> looser = new HashSet<>();
-    private Map<Integer, DyeColor> colormap = new HashMap<>();
+    private final Map<Integer, DyeColor> colormap = new HashMap<>();
 
     private static Random random;
     public GameState state; //ОЖИДАНИЕ СТАРТ ЭКИПИРОВКА ИГРА ФИНИШ
@@ -96,7 +82,11 @@ public class Arena implements IArena {
     private final net.minecraft.world.level.block.state.IBlockData ibdDataAir;
     private static final BlockPosition.MutableBlockPosition mutableBlockPosition = new BlockPosition.MutableBlockPosition(0, 0, 0);
 
-    ;
+    private static final List <PotionEffect> pot = List.of(
+            new PotionEffect(PotionEffectType.INVISIBILITY, 60, 10),
+            new PotionEffect(PotionEffectType.CONFUSION, 60, 10),
+            new PotionEffect(PotionEffectType.SLOW, 60, 10)
+    );
     
     
     
@@ -107,7 +97,7 @@ public class Arena implements IArena {
             byte size_x, byte size_z, byte down, byte show,
             byte difficulty, byte maxRound, byte minPlayers, byte playersForForcestart) {
 
-        this.name = name;
+        this.arenaName = name;
         //try {
         this.arenaLobby = arenaLobby;
         this.zero = zero;
@@ -226,7 +216,7 @@ public class Arena implements IArena {
 
         state = GameState.ОЖИДАНИЕ;
         canreset = true;
-        Twist.sendBsignMysql(name, state.displayColor + state.name(), "", GameState.ОЖИДАНИЕ);
+        Twist.sendBsignMysql(arenaName, state.displayColor + state.name(), "", GameState.ОЖИДАНИЕ);
         //  if (Main.noteblock) StopMusic();
     }
 
@@ -260,7 +250,7 @@ public class Arena implements IArena {
 
                 } else if (cdCounter > 0) {
                     --cdCounter;
-                    Twist.sendBsignChanel(name, players.size(),
+                    Twist.sendBsignChanel(arenaName, players.size(),
                             "§1Твистеры: " + players.size(),
                             state.displayColor + state.name() + " §4" + cdCounter, GameState.СТАРТ);
                     if (cdCounter <= 5 && cdCounter > 0) {
@@ -310,7 +300,8 @@ public class Arena implements IArena {
             p.getInventory().clear();
             p.teleport(zero.clone().add((4 + random.nextInt(this.size_x - 2) * 4), 1, (4 + random.nextInt(this.size_z - 2) * 4)));
             //p.playSound(p.getLocation(), "twist.start", 1, 1);
-            p.playSound(p.getLocation(), Sound.BLOCK_BELL_RESONATE, 1, 1);
+            p.playSound(p.getLocation(), Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 2, 2);
+            p.setWalkSpeed((float) 0.3);
         });
 
         PreStart = (new BukkitRunnable() {         //тут уже таймер с игроками
@@ -321,14 +312,6 @@ public class Arena implements IArena {
                     resetGame();
                 }
 
-               // if (players.size() < minPlayers) {
-                //    SendAB("§d§lСлишкома мало игроков, отмена.");
-               //     this.cancel();
-                //    if (canreset) {
-                //        resetGame();
-                //    }
-
-                //} else 
                 if (prestart == 0) {
                     prestart = 7;
                     this.cancel();
@@ -349,6 +332,8 @@ public class Arena implements IArena {
         }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
     }
 
+    
+    
     public void GameProgress() {
         if (state != GameState.ЭКИПИРОВКА) {
             return;
@@ -364,16 +349,17 @@ public class Arena implements IArena {
         Oplayer op;
         for (Player p : getPlayers()) {
             op = PM.getOplayer(p);
-            op.score.getSideBar().setTitle("§6Раунд: §b"+round);
+            SideBar sb = op.score.getSideBar().setTitle("§6Раунд: §b"+round);
             for (String n : players.keySet()) {
-                op.score.getSideBar().add(n, "§c0");
+                sb.add(n, TCUtils.toChat(nextColor)+n+" §e0 §f/ §c0");
             }
-            op.score.getSideBar().build();
+            sb.build();
         }
         
         displayColor = true;
         removeFloor = false;
-
+        //showNextColor();
+        
         GameTimer = (new BukkitRunnable() {
             @Override
             public void run() {
@@ -385,19 +371,21 @@ public class Arena implements IArena {
                     }
                     showNextColor();                                             //показываем инфо
                     Bonus_spawn();
-                    
+                    final String nextColorPref = TCUtils.toChat(nextColor);
                     Oplayer op;
                     for (Player p : list) {
                         if (looser.remove(p.getName())) {
                             p.teleport(zero.clone().add((4 + random.nextInt(size_x - 2) * 4), 1, (4 + random.nextInt(size_z - 2) * 4)));
-                            p.setGameMode(GameMode.ADVENTURE);
-                            for (Player p1 : list) {
-                                op = PM.getOplayer(p1);
-                                op.score.getSideBar().update(p.getName(), "§c"+players.get(p.getName()));
-                            }
+                            p.getActivePotionEffects().stream().forEach((effect) -> {
+                                p.removePotionEffect(effect.getType());
+                            });
+                            //p.setGameMode(GameMode.ADVENTURE);
                         }
                         op = PM.getOplayer(p);
                         op.score.getSideBar().setTitle("§6Раунд: §b"+round);
+                        for (Player p1 : list) {
+                            op.score.getSideBar().update(p1.getName(), nextColorPref+p1.getName()+" §e"+p1.getLevel()+" §f/ "+"§c"+players.get(p1.getName()));
+                        }  
                     }
 
 
@@ -407,7 +395,7 @@ public class Arena implements IArena {
                     }
                     MustStayOne();                                              //удаляем все вроме текущего цвета
                     round++;                                                    //эта же функция возвращает новый пол через 3 сек
-                    Twist.sendBsignChanel(name, players.size(),
+                    Twist.sendBsignChanel(arenaName, players.size(),
                             state.displayColor + state.name(),
                             "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound, state);
                 }
@@ -435,11 +423,12 @@ public class Arena implements IArena {
 
     }
 
+
+    
     public void fall(final Player p) {
         if (looser.add(p.getName())) {
-            players.replace(p.getName(), players.get(p.getName()+1));
-            p.setGameMode(GameMode.SPECTATOR);
-            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 2, 2));
+            players.put(p.getName(), players.get(p.getName()+1));
+            p.addPotionEffects(pot);
             ParticlePlay.deathEffect(p, false);
         }
     }
@@ -455,13 +444,12 @@ public class Arena implements IArena {
                 ammount++;
             }
         }
-        for (int i = ammount; i < (this.size_x * this.size_z / 8); i++) {
-
+        for (int i = ammount; i < (size_x * size_z / 8); i++) {
             final ItemStack is = new ItemStack(Material.SUNFLOWER, 1);// AM.bonus.clone();
             final ItemMeta im = is.getItemMeta();
             im.setDisplayName(String.valueOf(random.nextInt(999)));
             is.setItemMeta(im);
-            Item item = this.arenaLobby.getWorld().dropItem(this.zero.clone().add((4 + random.nextInt(this.size_x - 2) * 4), 2, (4 + random.nextInt(this.size_z - 2) * 4)), is);
+            Item item = arenaLobby.getWorld().dropItem(zero.clone().add((4 + random.nextInt(size_x - 2) * 4), 1, (4 + random.nextInt(size_z - 2) * 4)), is);
             item.setVelocity(new Vector(0, 0, 0));
             item.setPickupDelay(1);
             item.setGravity(false);
@@ -504,7 +492,7 @@ public class Arena implements IArena {
             });
         }
 
-        this.EndGame = (new BukkitRunnable() {
+        EndGame = (new BukkitRunnable() {
             @Override
             public void run() {
                 //if ( ending <=0 || Arena.this.players.isEmpty() ) {
@@ -580,7 +568,7 @@ public class Arena implements IArena {
             @Override
             public void run() {
 
-                getPlayers().stream().forEach((p) -> {
+                getPlayers().stream().forEach( p -> {
 
                     p.getInventory().setItem(i, ItemUtils.air);
                     p.updateInventory();
@@ -625,6 +613,7 @@ public class Arena implements IArena {
         RemoveFloor = (new BukkitRunnable() {
             @Override
             public void run() {
+                //showNextColor();
                 BackFloor();
                 displayColor = true;
                 removeFloor = false;
@@ -812,14 +801,14 @@ public class Arena implements IArena {
             MG.leaveArena.giveForce(p);//p.getInventory().setItem(8, UniversalListener.leaveArena.clone());
             //p.updateInventory();
             //Signs.SignsUpdate(name, Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1 - / -" );
-            Twist.sendBsignChanel(name, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), GameState.ОЖИДАНИЕ);
+            Twist.sendBsignChanel(arenaName, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), GameState.ОЖИДАНИЕ);
             //if (players.size() < minPlayers) {
             //    SendAB("§6Для старта нужно еще §b" + (minPlayers - players.size()) + " §6чел.!");
            // }
             //if (players.size() >= minPlayers) {
            //     startCountdown();
             //}
-            PM.getOplayer(p).tabSuffix(" §5"+name, p);
+            PM.getOplayer(p).tabSuffix(" §5"+arenaName, p);
         }
     }
 
@@ -837,18 +826,18 @@ public class Arena implements IArena {
             //ApiOstrov.sendActionBarDirect(p, Messages.GetMsg("arena_exit"));
             //p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation());
             //Signs.SignsUpdate( getName(),Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1 - / -" );
-            Twist.sendBsignChanel(name, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), state);
+            Twist.sendBsignChanel(arenaName, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), state);
 
         } else {                                            //выход во время игры-возможно только через отключение
             if (players.remove(p.getName()) != null) {
                 // players.remove(p.getName());
                 //if ( players.size() ==1 ) endGame();    
                 //Signs.SignsUpdate( getName(),  Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + this.round + "§7/§b§l" + this.maxRound  );
-                Twist.sendBsignChanel(name, players.size(), state.displayColor + state.name(), "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound, state);
+                Twist.sendBsignChanel(arenaName, players.size(), state.displayColor + state.name(), "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound, state);
                 Oplayer op;
                 for (Player pl : getPlayers()) {
                     op = PM.getOplayer(pl);
-                    op.score.getSideBar().update(name, "§4§o✖");
+                    op.score.getSideBar().update(arenaName, "§4§o✖");
                 }
             }
         }
@@ -889,7 +878,7 @@ public class Arena implements IArena {
     }
 
     public String getName() {
-        return this.name;
+        return this.arenaName;
     }
 
     /*
@@ -1016,12 +1005,10 @@ public class Arena implements IArena {
 
     ///салютики
     private static void firework(Player p) {
-
         for (int i = 0; i < 6; ++i) {                           //салютики
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    Random random = new Random();
                     Firework firework = (Firework) p.getWorld().spawn(p.getLocation().clone().add(0, 5, 0), Firework.class);
                     FireworkMeta fireworkmeta = firework.getFireworkMeta();
                     FireworkEffect fireworkeffect = FireworkEffect.builder().flicker(random.nextBoolean()).withColor(Color.fromBGR(random.nextInt(256), random.nextInt(256), random.nextInt(256))).withFade(Color.fromBGR(random.nextInt(256), random.nextInt(256), random.nextInt(256))).with(FireworkEffect.Type.STAR).trail(true).build();

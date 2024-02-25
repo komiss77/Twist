@@ -10,7 +10,6 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import ru.komiss77.enums.GameState;
 import ru.komiss77.utils.LocationUtil;
 import ru.ostrov77.minigames.MG;
 
