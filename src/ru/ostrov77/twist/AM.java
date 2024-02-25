@@ -159,7 +159,7 @@ public class AM {
     public static void DeleteArena(String arenaName, Player p) {
         final Arena a = arenas.remove(arenaName);
         if (a != null)  {
-            a.stopShedulers();
+            a.resetGame();
             a.ResetFloor();
             if (customConfig.getConfigurationSection("Arenas") != null) {
                 customConfig.set("Arenas." + a.getName(),  null);

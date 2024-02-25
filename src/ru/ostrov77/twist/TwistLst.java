@@ -14,10 +14,16 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.Vector;
 import ru.komiss77.ApiOstrov;
 
 public class TwistLst implements Listener {
+
+    @EventHandler (priority = EventPriority.MONITOR)
+    public void PlayerQuitEvent (PlayerQuitEvent e) {
+        AM.GlobalPlayerExit (e.getPlayer());
+    }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void EntityDamageByEntityEvent(EntityDamageByEntityEvent e) {
@@ -58,7 +64,7 @@ public class TwistLst implements Listener {
     }
 
     
-    
+    /*
     @EventHandler(priority = EventPriority.HIGH)
     public void onOpenInv (InventoryOpenEvent e) {
         Player player = (Player) e.getPlayer();
@@ -69,7 +75,7 @@ public class TwistLst implements Listener {
                 player.sendMessage("Инвентарь заблокирован!");
             }
 
-    }
+    }*/
 
 
     @EventHandler(ignoreCancelled = true)
@@ -77,8 +83,9 @@ public class TwistLst implements Listener {
         if (e.getEntityType() != EntityType.PLAYER) {
             return;
         }
-        Player p = Bukkit.getPlayerExact(e.getEntity().getName());
-
+        Player p = (Player) e.getEntity();
+        final Arena arena = AM.getPlayersArena(p);
+        if (arena==null) return;
         //if (e.getItem().getItemStack()!=null && e.getItem().getItemStack().hasItemMeta() && e.getItem().getItemStack().getItemMeta().)    
         switch (e.getItem().getItemStack().getType()) {
 

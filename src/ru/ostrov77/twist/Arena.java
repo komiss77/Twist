@@ -61,7 +61,7 @@ public class Arena implements IArena {
     private byte difficulty;
     private byte maxRound;
 
-    private BukkitTask CoolDown, PreStart, GameTimer, EndGame, DysplayColor,RemoveFloor;
+    private BukkitTask task, PreStart1, GameTimer1, EndGame1, DysplayColor,RemoveFloor;
     private int cdCounter, prestart, playtime, ending;
 
     private boolean canreset;
@@ -182,15 +182,22 @@ public class Arena implements IArena {
     public void resetGame() {
 
         canreset = false;
-        stopShedulers();
+        if (task != null) {
+            task.cancel();
+        }
+        if (DysplayColor != null) {
+            DysplayColor.cancel();
+        }
+        if (RemoveFloor != null) {
+            RemoveFloor.cancel();
+        }
 
-        arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
+        arenaLobby.getWorld().getPlayers().stream().forEach( p -> {
             MG.lobbyJoin(p);
-            //p.teleport(Bukkit.getServer().getWorlds().get(0).getSpawnLocation()); 
         });
 
 
-        arenaLobby.getWorld().getEntities().stream().forEach((e) -> {
+        arenaLobby.getWorld().getEntities().stream().forEach( e -> {
             if (e.getType() != EntityType.PLAYER) {
                 e.remove();
             }
@@ -208,7 +215,6 @@ public class Arena implements IArena {
 
         GenerateNewFloor();//BackFloor();
 
-        round = 1;
         nextColor = TCUtils.randomDyeColor();//DyeColor.BLACK;
 
         displayColor = true;
@@ -217,19 +223,16 @@ public class Arena implements IArena {
         state = GameState.ОЖИДАНИЕ;
         canreset = true;
         Twist.sendBsignMysql(arenaName, state.displayColor + state.name(), "", GameState.ОЖИДАНИЕ);
-        //  if (Main.noteblock) StopMusic();
     }
 
+    
     public void startCountdown() {                            //ожидание в лобби
         if (state != GameState.ОЖИДАНИЕ) {
             return;
         }
         state = GameState.СТАРТ;
 
-        SendTitle("", "§6" + String.valueOf(cdCounter));
-        //   if (Main.noteblock) StartMusic ();
-
-        CoolDown = (new BukkitRunnable() {
+        task = (new BukkitRunnable() {
             @Override
             public void run() {
 
@@ -238,29 +241,19 @@ public class Arena implements IArena {
                     this.cancel();
                     PrepareToStart();
 
-                //}// else if (players.size() < minPlayers) {
-                 //   SendAB("§d§lНедостаточно участников, счётчик остановлен.");
-                 //   state = GameState.ОЖИДАНИЕ;
-                //    cdCounter = 40;
-              //      this.cancel();
-
-              //  } else if (players.size() == playersForForcestart && cdCounter > 10) {
-                //    SendAB("§2§lВремя до старта игры уменьшено!");
-                //    cdCounter = 10;
-
                 } else if (cdCounter > 0) {
                     --cdCounter;
                     Twist.sendBsignChanel(arenaName, players.size(),
                             "§1Твистеры: " + players.size(),
                             state.displayColor + state.name() + " §4" + cdCounter, GameState.СТАРТ);
-                    if (cdCounter <= 5 && cdCounter > 0) {
-                        SendTitle("", "§b" + cdCounter + " !");
-                        SendSound(Sound.BLOCK_COMPARATOR_CLICK);
-                    }
+
                     Oplayer op;
                     for (Player p : getPlayers()) {
                         op = PM.getOplayer(p);
                         op.score.getSideBar().setTitle("§6До старта: §b"+(cdCounter+7));
+                        if (cdCounter <= 5 && cdCounter > 0) {
+                            p.playSound(p.getLocation(), Sound.BLOCK_COMPARATOR_CLICK, 5.0F, 5.0F);
+                        }
                     }
 
                 }
@@ -269,42 +262,37 @@ public class Arena implements IArena {
         }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
     }
 
+    
     public void ForceStart(Player p) {
-        if (!IsJonable()) {
-            p.sendMessage("§cYou can't start an arena - arena in game!");
+        if (state!=GameState.СТАРТ) {
+            p.sendMessage("§cYou can't start an arena - arena must have state СТАРТ!");
             return;
         }
-        if (state != GameState.СТАРТ) {
-            p.sendMessage("§cForce start is possible when min.player reached!");
-            return;
-        }
-        if (CoolDown != null && cdCounter > 3) {
+        if (task != null && cdCounter > 3) {
             cdCounter = 3;
         }
         p.sendMessage("§bВремя до старта уменьшено");
-        PrepareToStart();
     }
 
+    
     public void PrepareToStart() {
         if (state != GameState.СТАРТ) {
             return;
         }
         state = GameState.ЭКИПИРОВКА;
-        if (CoolDown != null) {
-            CoolDown.cancel();
+        if (task != null) {
+            task.cancel();
         }
 
         getPlayers().stream().forEach( p -> {  //всех игроков в мире добавля в список и на арену  
-            //players.add(p.getName());
             p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 5, 1));
             p.getInventory().clear();
             p.teleport(zero.clone().add((4 + random.nextInt(this.size_x - 2) * 4), 1, (4 + random.nextInt(this.size_z - 2) * 4)));
-            //p.playSound(p.getLocation(), "twist.start", 1, 1);
             p.playSound(p.getLocation(), Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 2, 2);
             p.setWalkSpeed((float) 0.3);
         });
 
-        PreStart = (new BukkitRunnable() {         //тут уже таймер с игроками
+        task = (new BukkitRunnable() {         //тут уже таймер с игроками
             @Override
             public void run() {
 
@@ -318,13 +306,12 @@ public class Arena implements IArena {
                     GameProgress();
 
                 } else {
-                    SendAB("§aТвист заражается... Осталось §b" + prestart + " §aсек.!");
                     Oplayer op;
                     for (Player p : getPlayers()) {
                         op = PM.getOplayer(p);
                         op.score.getSideBar().setTitle("§6До старта: §b"+prestart);
+                        ApiOstrov.sendActionBarDirect(p, "§aТвист заражается... Осталось §b" + prestart + " §aсек.!");
                     }
-                    //SendSound(Sound.ENTITY_CAT_PURR);
                     --prestart;
                 }
 
@@ -339,12 +326,9 @@ public class Arena implements IArena {
             return;
         }
         state = GameState.ИГРА;
-        if (PreStart != null) {
-            PreStart.cancel();
+        if (task != null) {
+            task.cancel();
         }
-
-        SendAB("§6ТВИСТ! §aТВИСТ! §bТВИСТ!");
-        SendSound(Sound.ENTITY_CAT_AMBIENT);
 
         Oplayer op;
         for (Player p : getPlayers()) {
@@ -354,13 +338,14 @@ public class Arena implements IArena {
                 sb.add(n, TCUtils.toChat(nextColor)+n+" §e0 §f/ §c0");
             }
             sb.build();
+            ApiOstrov.sendActionBarDirect(p, "§6ТВИСТ! §aТВИСТ! §bТВИСТ!");
+            p.playSound(p.getLocation(), Sound.ENTITY_CAT_AMBIENT, 2, 2);
         }
         
         displayColor = true;
         removeFloor = false;
-        //showNextColor();
         
-        GameTimer = (new BukkitRunnable() {
+        task = (new BukkitRunnable() {
             @Override
             public void run() {
                 final List<Player> list = getPlayers();
@@ -384,6 +369,7 @@ public class Arena implements IArena {
                         op = PM.getOplayer(p);
                         op.score.getSideBar().setTitle("§6Раунд: §b"+round);
                         for (Player p1 : list) {
+//Ostrov.log("p1="+p1.getName()+" players.get="+players.get(p1.getName()));
                             op.score.getSideBar().update(p1.getName(), nextColorPref+p1.getName()+" §e"+p1.getLevel()+" §f/ "+"§c"+players.get(p1.getName()));
                         }  
                     }
@@ -409,7 +395,6 @@ public class Arena implements IArena {
 
                 //this.show - ( this.difficulty * this.round )
                 if (players.isEmpty() || playtime > maxRound * show + 20 && canreset) {
-                    //SendTitle("Время вышло!", "Игра окончена!");
                     resetGame();
                 } else if (round >= maxRound) { //последний раунд и есть выжившие - победитель
                     this.cancel();
@@ -427,7 +412,8 @@ public class Arena implements IArena {
     
     public void fall(final Player p) {
         if (looser.add(p.getName())) {
-            players.put(p.getName(), players.get(p.getName()+1));
+            players.replace(p.getName(), players.get(p.getName())+1);
+//Ostrov.log("fall players.get=");
             p.addPotionEffects(pot);
             ParticlePlay.deathEffect(p, false);
         }
@@ -457,13 +443,15 @@ public class Arena implements IArena {
 
     }
 
+    
+    
     public void endGame() {
         if (state != GameState.ИГРА) {
             return;
         }
         state = GameState.ФИНИШ;
-        if (GameTimer != null) {
-            GameTimer.cancel();
+        if (task != null) {
+            task.cancel();
         }
         if (DysplayColor != null) {
             DysplayColor.cancel();
@@ -474,7 +462,6 @@ public class Arena implements IArena {
 
         if (!players.isEmpty()) {
             SendMessage("");
-            //SendMessage("");
             SendMessage("");
             SendMessage("§fПобедители: ");
 
@@ -492,10 +479,9 @@ public class Arena implements IArena {
             });
         }
 
-        EndGame = (new BukkitRunnable() {
+        task = (new BukkitRunnable() {
             @Override
             public void run() {
-                //if ( ending <=0 || Arena.this.players.isEmpty() ) {
                 if (ending <= 0) {
                     this.cancel();
                     resetGame();
@@ -508,32 +494,14 @@ public class Arena implements IArena {
             }
         }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
 
-        // Signs.SignsUpdate ( getName(), "§1---", getStateAsString(), "§1 - / -" );
         Twist.sendBsignChanel(getName(), players.size(), "§1 - / -", state.displayColor + state.name(), state);
-
     }
 
-    public void stopShedulers() {
-        if (this.CoolDown != null) {
-            this.CoolDown.cancel();
-        }
-        if (this.PreStart != null) {
-            this.PreStart.cancel();
-        }
-        if (this.GameTimer != null) {
-            this.GameTimer.cancel();
-        }
-        if (this.EndGame != null) {
-            this.EndGame.cancel();
-        }
-        if (this.DysplayColor != null) {
-            this.DysplayColor.cancel();
-        }
-        if (this.RemoveFloor != null) {
-            this.RemoveFloor.cancel();
-        }
-    }
 
+    
+    
+    
+    
     public void showNextColor() {                           //показать новый цвет, звуки, таймер ->> разрешение на стирание 
 
         nextColor = GenRandColor(nextColor);//new_col; //приготовить следующий цвет
@@ -780,9 +748,17 @@ public class Arena implements IArena {
     }
 // -----------------------------------------------------------------------------------------
 
+    
+    
+    
+    
+    
+    
+    
+    
 // xxxxxxxxxxxxxxxxxxxxxxxxxxx  Обработчик игроков xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     public void addPlayers(Player p) {
-        if (IsJonable()) {
+        if (state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ) {
             p.teleport(getLobby());
             players.put(p.getName(), 0);
             if (players.size()==1) {
@@ -814,13 +790,28 @@ public class Arena implements IArena {
 
     public void PlayerExit(Player p) {
 
-        if (IsJonable()) {                //если ожидание или первый таёмер, т.е. не внесён в players
+        if (players.remove(p.getName()) != null) {
+            if (players.isEmpty()) {
+                if (task!=null) {
+                    resetGame();
+                } else {
+                    Twist.sendBsignChanel(arenaName, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), state);
+                }
+            } else {
+                Oplayer op;
+                for (Player pl : getPlayers()) {
+                    op = PM.getOplayer(pl);
+                    op.score.getSideBar().remove(p.getName());
+                }
+                Twist.sendBsignChanel(arenaName, players.size(), state.displayColor + state.name(), "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound, state);
+            }
+        }
+        
+      /*  if (IsJonable()) {                //если ожидание или первый таёмер, т.е. не внесён в players
             players.remove(p.getName());         //перестраховка
             if (players.isEmpty() && CoolDown != null) {      //если был запущен таймер
                 CoolDown.cancel();
                 cdCounter = 40;
-            //    SendAB("§d§lНедостаточно участников, счётчик остановлен.");
-            //    state = GameState.ОЖИДАНИЕ;
             }
             //new ActionbarTitleObject (Messages.GetMsg("arena_exit")).send(p);
             //ApiOstrov.sendActionBarDirect(p, Messages.GetMsg("arena_exit"));
@@ -828,11 +819,8 @@ public class Arena implements IArena {
             //Signs.SignsUpdate( getName(),Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), "§1 - / -" );
             Twist.sendBsignChanel(arenaName, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), state);
 
-        } else {                                            //выход во время игры-возможно только через отключение
+        } else {  //выход во время игры-возможно только через отключение
             if (players.remove(p.getName()) != null) {
-                // players.remove(p.getName());
-                //if ( players.size() ==1 ) endGame();    
-                //Signs.SignsUpdate( getName(),  Messages.GetMsg("signs_line_3_prefix")+ players.size(), getStateAsString(), Messages.GetMsg("signs_round_prefix") + this.round + "§7/§b§l" + this.maxRound  );
                 Twist.sendBsignChanel(arenaName, players.size(), state.displayColor + state.name(), "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound, state);
                 Oplayer op;
                 for (Player pl : getPlayers()) {
@@ -840,27 +828,10 @@ public class Arena implements IArena {
                     op.score.getSideBar().update(arenaName, "§4§o✖");
                 }
             }
-        }
+        }*/
 
     }
 
-   /* public void loose(final Player p) {
-
-        if (players.remove(p.getName())) {
-            looser.add(p.getName());
-
-            if (canreset) {
-                spectate(p);
-                DonatEffect.spawnRandomFirework(p.getLocation());
-
-                p.getWorld().playSound(p.getLocation(), "twist.fall_down", 10, 1);
-                ApiOstrov.sendTitle(p, "", "§4Вы проиграли!", 5, 10, 5);
-                ApiOstrov.addStat(p, Stat.TW_game);
-                ApiOstrov.addStat(p, Stat.TW_loose);
-            }
-        }
-
-    }*/
 
 // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     public void spectate(final Player p) {
@@ -873,9 +844,9 @@ public class Arena implements IArena {
         return players.containsKey(p.getName());
     }
 
-    public boolean IsJonable() {
-        return (state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ);
-    }
+   // public boolean IsJonable() {
+   //     return (state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ);
+   // }
 
     public String getName() {
         return this.arenaName;
