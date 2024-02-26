@@ -52,25 +52,28 @@ public class TwistLst implements Listener {
             e.setDamage(0);
             p.setFallDistance(0);
 
-            if (arena.state==GameState.ИГРА) {
-                if (e.getCause() == EntityDamageEvent.DamageCause.VOID || e.getCause() == EntityDamageEvent.DamageCause.FALL) {
-                    arena.fall(p);
-                }
-            }
-            p.teleport(arena.randomFielldLoc()); 
-          /*  switch (arena.state) {
+            switch (arena.state) {
+                
+                case ОЖИДАНИЕ, СТАРТ ->
+                    p.teleport(arena.arenaLobby);
+                    
+                case ЭКИПИРОВКА ->
+                    p.teleport(arena.randomFielldLoc()); //
+                    
                 case ИГРА -> {
-                    //во время игры
                     if (e.getCause() == EntityDamageEvent.DamageCause.VOID || e.getCause() == EntityDamageEvent.DamageCause.FALL) {
-                        p.teleport(arena.zero.clone().subtract(0, 2, 0)); //тп под пол
-                        arena.fall(p); //там в зрителя и тп над ареной
+                        arena.fall(p);
+                       if (arena.zero.getBlockY() - p.getLocation().getBlockY() > 5) {
+                           p.teleport(arena.randomFielldLoc());
+                       } 
                     }
                 }
-                case СТАРТ, ФИНИШ ->
-                    p.teleport(arena.randomFielldLoc()); //
+                case ФИНИШ ->
+                    p.teleport(arena.randomFielldLoc());
+                    
                 default ->
                     p.teleport(p.getWorld().getSpawnLocation());
-            }*/
+            }
         }
 
     }

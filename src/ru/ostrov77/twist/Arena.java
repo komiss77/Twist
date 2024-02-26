@@ -322,7 +322,7 @@ public class Arena implements IArena {
                         RemoveFloor.cancel();
                     }
                     //showNextColor();                                             //показываем инфо
-                    Bonus_spawn();
+                    spawnCoin();
                     final String nextColorPref = TCUtils.toChat(nextColor);
                     Oplayer op;
                     final String r = "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound;
@@ -386,8 +386,7 @@ public class Arena implements IArena {
         }
     }
 
-    private void Bonus_spawn() {
-
+    private void spawnCoin() {
         int ammount = 0;
         for (Entity e : arenaLobby.getWorld().getEntities()) {
             if (e.getType() != EntityType.PLAYER && e.getTicksLived() > 300) {
@@ -407,7 +406,6 @@ public class Arena implements IArena {
             item.setPickupDelay(1);
             item.setGravity(false);
         }
-
     }
 
     
@@ -426,6 +424,7 @@ public class Arena implements IArena {
         if (RemoveFloor != null) {
             RemoveFloor.cancel();
         }
+        BackFloor();
 
         int coin, fall;
         final List<String> winer = new ArrayList<>();
@@ -444,6 +443,7 @@ public class Arena implements IArena {
                 winer.add(p.getName());
             } else {
                 p.sendMessage("§5§lПадений больше, чем монет, это провал..");
+                p.playSound(p.getEyeLocation(), Sound.ENTITY_EVOKER_PREPARE_SUMMON, 2, 2);
             }
             p.sendMessage("");
             ApiOstrov.addStat(p, Stat.TW_game);
@@ -546,7 +546,7 @@ public class Arena implements IArena {
         for (byte x = 0; x < size_x; x++) {
             for (byte z = 0; z < size_z; z++) {
 
-                if (colormap.get(x * size_x + z) != nextColor) {
+                if (colormap.get(x * size_z + z) != nextColor) {
                     FillPlotAir(x, z);
                 }
 
@@ -573,7 +573,7 @@ public class Arena implements IArena {
 
         for (byte x = 0; x < size_x; x++) {
             for (byte z = 0; z < size_z; z++) {
-                idx = x * size_x + z;
+                idx = x * size_z + z;
 
                 previos = colormap.get(idx);
                 if (previos != nextColor) { //плот менялся на воздух
@@ -628,7 +628,7 @@ public class Arena implements IArena {
 
                 DyeColor col = GenRandColor(nextColor); //следущий цвет должен отличаться
                 nextColor = col;
-                colormap.put(x * size_x + z, col);
+                colormap.put(x * size_z + z, col);
 //Ostrov.log("generate idx="+(x * size_x + z)+" col="+col);
                 FillPlotMat(x, z, col);  //заполняем плоты случ цветом
                 FillDown(x, z);          //заполняем низ
