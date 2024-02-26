@@ -10,26 +10,31 @@ import org.bukkit.event.Listener;
 import org.bukkit.Effect;
 import org.bukkit.Sound;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Item;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.Vector;
 import ru.komiss77.ApiOstrov;
+import ru.komiss77.enums.GameState;
+
 
 public class TwistLst implements Listener {
 
     @EventHandler (priority = EventPriority.MONITOR)
     public void PlayerQuitEvent (PlayerQuitEvent e) {
-        AM.GlobalPlayerExit (e.getPlayer());
+        final Arena a = AM.getArena(e.getPlayer());
+        if (a!=null) {
+            a.removePlayer(e.getPlayer());
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void EntityDamageByEntityEvent(EntityDamageByEntityEvent e) {
         if (e.getEntityType() == EntityType.PLAYER) {
             Player p = (Player) e.getEntity();
-            final Arena arena = AM.getPlayersArena(p);
+            final Arena arena = AM.getArena(p);
             if (arena != null) {
                 e.setDamage(0);
                 e.setCancelled(true);
@@ -41,24 +46,31 @@ public class TwistLst implements Listener {
     public void onEntityDamage(EntityDamageEvent e) {
 
         final Player p = (Player) e.getEntity();
-        final Arena arena = AM.getPlayersArena(p);
+        final Arena arena = AM.getArena(p);
 
         if (arena != null) {
             e.setDamage(0);
             p.setFallDistance(0);
 
-            switch (arena.state) {
+            if (arena.state==GameState.ИГРА) {
+                if (e.getCause() == EntityDamageEvent.DamageCause.VOID || e.getCause() == EntityDamageEvent.DamageCause.FALL) {
+                    arena.fall(p);
+                }
+            }
+            p.teleport(arena.randomFielldLoc()); 
+          /*  switch (arena.state) {
                 case ИГРА -> {
                     //во время игры
                     if (e.getCause() == EntityDamageEvent.DamageCause.VOID || e.getCause() == EntityDamageEvent.DamageCause.FALL) {
+                        p.teleport(arena.zero.clone().subtract(0, 2, 0)); //тп под пол
                         arena.fall(p); //там в зрителя и тп над ареной
                     }
                 }
                 case СТАРТ, ФИНИШ ->
-                    p.teleport(arena.zero.clone().add(0, 3, 0)); //
+                    p.teleport(arena.randomFielldLoc()); //
                 default ->
                     p.teleport(p.getWorld().getSpawnLocation());
-            }
+            }*/
         }
 
     }
@@ -84,38 +96,34 @@ public class TwistLst implements Listener {
             return;
         }
         Player p = (Player) e.getEntity();
-        final Arena arena = AM.getPlayersArena(p);
+        final Arena arena = AM.getArena(p);
         if (arena==null) return;
-        //if (e.getItem().getItemStack()!=null && e.getItem().getItemStack().hasItemMeta() && e.getItem().getItemStack().getItemMeta().)    
-        switch (e.getItem().getItemStack().getType()) {
+        final Item i = e.getItem();
+        e.setCancelled(true);
+        
+        switch (i.getItemStack().getType()) {
 
             case SUNFLOWER -> {
                 //System.out.println("подобрал бонус level:"+e.getPlayer().getLevel());                    
-                e.setCancelled(true);
-                if (e.getItem().isGlowing()) {
+                if (i.isGlowing()) {
                     return;
                 }
-                e.getItem().setVelocity(new Vector(0, 1.0, 0));
+                i.setVelocity(new Vector(0, 1.0, 0));
 
                 Bukkit.getScheduler().scheduleSyncDelayedTask(Twist.instance, () -> {
-                    e.getItem().remove();
+                    i.remove();
                 }, 5L);
                 
-                e.getItem().setGlowing(true);
-                if (AM.isInGame(p)) {
-                    //p.playSound(p.getLocation(), Sound.ENTITY_CHICKEN_EGG, 20F, 1F);
-                    //e.getPlayer().getWorld().playSound(e.getPlayer().getLocation(), "twist.bonus_pickup", 10, 1);
-                    p.getWorld().playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 10, 1);
-                    p.getWorld().playEffect(p.getLocation(), Effect.BOW_FIRE, 5);
-                    p.setLevel(p.getLevel() + 1);
+                i.setGlowing(true);
+                i.getWorld().playSound(i.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 10, 1);
+                i.getWorld().playEffect(i.getLocation(), Effect.BOW_FIRE, 5);
+                p.setLevel(p.getLevel() + 1);
 
-                }
             }
 
             default -> {
-                e.setCancelled(true);
-                e.getItem().remove();
-                p.getWorld().playSound(p.getLocation(), Sound.ENTITY_CHICKEN_EGG, 1.0F, 9.9F);
+                i.remove();
+                i.getWorld().playSound(i.getLocation(), Sound.ENTITY_CHICKEN_EGG, 1.0F, 9.9F);
             }
 
         }
@@ -126,7 +134,7 @@ public class TwistLst implements Listener {
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
-        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getPlayersArena(e.getPlayer()) == null) {
+        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getArena(e.getPlayer()) == null) {
             return;
         }
         e.setCancelled(true);
@@ -140,7 +148,7 @@ public class TwistLst implements Listener {
 
     @EventHandler
     public void onPlayerSwapoffHand(PlayerSwapHandItemsEvent e) {
-        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getPlayersArena(e.getPlayer()) == null) {
+        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getArena(e.getPlayer()) == null) {
             return;
         }
         e.setCancelled(true);

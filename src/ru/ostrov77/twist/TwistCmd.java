@@ -12,12 +12,11 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import ru.komiss77.enums.GameState;
 import ru.ostrov77.minigames.MG;
-import static ru.ostrov77.twist.AM.getArena;
-import static ru.ostrov77.twist.AM.getPlayersArena;
+
 
 public class TwistCmd implements CommandExecutor, TabCompleter {
 
-    private static final String c_pref = "tw";
+    private static final String PREF = "tw";
     public static List<String> subCommands = Arrays.asList("join", "leave", "create", "delete", "list", "reset", "start");
 
     @Override
@@ -40,7 +39,7 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
 //System.out.println("l="+strings.length+" 0="+strings[0]+" 1="+strings[1]);
                 //if (strings[0].equalsIgnoreCase("build") || strings[0].equalsIgnoreCase("destroy") ) {
                 for (Arena a : AM.arenas.values()) {
-                    sugg.add(a.getName());
+                    sugg.add(a.arenaName);
                 }
                 //   sugg.add("loni");
                 //    sugg.add("permission");
@@ -85,19 +84,22 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                     p.sendMessage("§cНет арены с названием "+args[1]);
                     return true;
                 }
-                if (getPlayersArena(p)!=null) {
+                if (AM.getArena(p)!=null) {
                     p.sendMessage("§cВы уже на арене !");
                     return true;
                 }
                 if (arena.state == GameState.ОЖИДАНИЕ || arena.state == GameState.СТАРТ ) {
-                    arena.addPlayers(p);
+                    arena.addPlayer(p);
                 } else {
                     arena.spectate(p);
                 }
             }
 
             case "leave" -> {
-                AM.GlobalPlayerExit((Player) p);
+                final Arena a = AM.getArena(p);
+                if (a!=null) {
+                    a.removePlayer(p);
+                }
                 MG.lobbyJoin(p);
             }
 
@@ -155,7 +157,7 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
 
                 } else {
                     p.sendMessage("§cInsufficiant Arguments! Proper use of the command goes like/ this: ");
-                    p.sendMessage("§b" + c_pref + " create <name> <mode> <size_x> <size_z> <down_id>");
+                    p.sendMessage("§b" + PREF + " create <name> <mode> <size_x> <size_z> <down_id>");
                     p.sendMessage("§b<mode> §emust be string §bwool, glass or clay §7Input any chars for default value (wool)");
                     p.sendMessage("§b<size_x> <size_z> §emust be number §bfrom 2 to 64 §7Set to 0 for default value (16)");
                     p.sendMessage("§b<down_id> §emust be number §bfrom 1 to 300 §7Set to 0 for default mat.GLOWSTONE (89)");
@@ -212,7 +214,7 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                     p.sendMessage("§c" + args[2] + " must be Integer!");
                     return false;
                 }
-                AM.getArena(args[1]).setMaxRound(Byte.valueOf(args[2]));
+                AM.getArena(args[1]).maxRound = Integer.parseInt(args[2]);
                 sender.sendMessage("§bSuccessfully set the round count to " + args[2] + "!");
             }
 
@@ -224,7 +226,7 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                     p.sendMessage("§c" + args[2] + " must be Integer!");
                     return false;
                 }
-                AM.getArena(args[1]).setDifficulty(Byte.valueOf(args[2]));
+                AM.getArena(args[1]).difficulty = Integer.parseInt(args[2]);
                 sender.sendMessage("§bSuccessfully set the Difficulty to " + args[2] + "!");
             }
 
@@ -236,7 +238,7 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                     p.sendMessage("§c" + args[2] + " must be Integer!");
                     return false;
                 }
-                AM.getArena(args[1]).setShow(Byte.valueOf(args[2]));
+                AM.getArena(args[1]).show = Integer.parseInt(args[2]);
                 sender.sendMessage("§bSuccessfully set the starting show time to " + args[2] + "!");
             }
 
@@ -270,19 +272,19 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
     private static void Help(Player p) {
 
         p.sendMessage("§a-- " + Twist.Prefix + " §acommands help --");
-        p.sendMessage("" + c_pref + " join <name>");
+        p.sendMessage("" + PREF + " join <name>");
         if (p.isOp()) {
-            p.sendMessage("" + c_pref + " create <name> <mode> <size_x> <size_z> <down_material>");
-            p.sendMessage("" + c_pref + " delete <name>");
-            p.sendMessage("" + c_pref + " list");
-            p.sendMessage("" + c_pref + " setlobby <name>");
-            p.sendMessage("" + c_pref + " setdiff <name> <integer>");
-            p.sendMessage("" + c_pref + " setround <name> <integer>");
-            p.sendMessage("" + c_pref + " setminpl <name> <integer>");
-            p.sendMessage("" + c_pref + " setforce <name> <integer>");
-            p.sendMessage("" + c_pref + " start <name>");
-            p.sendMessage("" + c_pref + " reset <name>");
-            p.sendMessage("" + c_pref + " saveall");
+            p.sendMessage("" + PREF + " create <name> <mode> <size_x> <size_z> <down_material>");
+            p.sendMessage("" + PREF + " delete <name>");
+            p.sendMessage("" + PREF + " list");
+            p.sendMessage("" + PREF + " setlobby <name>");
+            p.sendMessage("" + PREF + " setdiff <name> <integer>");
+            p.sendMessage("" + PREF + " setround <name> <integer>");
+            p.sendMessage("" + PREF + " setminpl <name> <integer>");
+            p.sendMessage("" + PREF + " setforce <name> <integer>");
+            p.sendMessage("" + PREF + " start <name>");
+            p.sendMessage("" + PREF + " reset <name>");
+            p.sendMessage("" + PREF + " saveall");
         }
 
     }
@@ -301,7 +303,7 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
         if (args.length < num && num == 2) {
             p.sendMessage("§cArgument error!");
             if (err) {
-                p.sendMessage("§aexample: §f/" + c_pref + " " + args[0] + " MyArena");
+                p.sendMessage("§aexample: §f/" + PREF + " " + args[0] + " MyArena");
             }
             return false;
         }
@@ -309,7 +311,7 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
         if (args.length < num && num == 3 && err) {
             p.sendMessage("§cArgument error!");
             if (err) {
-                p.sendMessage("§aexample: §f/" + c_pref + " " + args[0] + " MyArena 3");
+                p.sendMessage("§aexample: §f/" + PREF + " " + args[0] + " MyArena 3");
             }
             return false;
         }

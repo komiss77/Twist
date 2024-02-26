@@ -9,7 +9,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 import ru.komiss77.utils.LocationUtil;
 import ru.ostrov77.minigames.MG;
 
@@ -17,8 +16,7 @@ import ru.ostrov77.minigames.MG;
 public class AM {
 
     public static HashMap <String, Arena> arenas;
-    static Plugin plugin = Twist.getPlugin(Twist.class);
-    static File customYml = new File( plugin.getDataFolder() + "/arenas.yml" );
+    static File customYml = new File( Twist.instance.getDataFolder() + "/arenas.yml" );
     static FileConfiguration customConfig = YamlConfiguration.loadConfiguration(customYml); 
 
     
@@ -33,7 +31,7 @@ public class AM {
     public static void load_arenas() {
         try {
             customConfig.options().copyDefaults(true);
-            plugin.getConfig().options().copyDefaults(true);
+            Twist.instance.getConfig().options().copyDefaults(true);
             
             if (customConfig.getConfigurationSection("Arenas") ==null)    return;
             
@@ -79,15 +77,15 @@ public class AM {
 
             arena = e.getValue();
 
-            customConfig.set( "Arenas." + arena.getName()+ ".zeropoint" , LocationUtil.toString(arena.getZero()) );
-            customConfig.set( "Arenas." + arena.getName()+ ".arenalobby" , LocationUtil.toDirString(arena.getLobby()) );
+            customConfig.set( "Arenas." + arena.arenaName+ ".zeropoint" , LocationUtil.toString(arena.zero) );
+            customConfig.set( "Arenas." + arena.arenaName+ ".arenalobby" , LocationUtil.toDirString(arena.arenaLobby) );
            // customConfig.set( "Arenas." + arena.getName()+ ".mode", arena.getMode());
-            customConfig.set( "Arenas." + arena.getName()+ ".size_x", arena.getSize_x());
-            customConfig.set( "Arenas." + arena.getName()+ ".size_z", arena.getSize_z());
-            customConfig.set( "Arenas." + arena.getName()+ ".down_id", arena.getDownId());
-            customConfig.set( "Arenas." + arena.getName()+ ".show", arena.getShow());
-            customConfig.set( "Arenas." + arena.getName()+ ".difficulty", arena.getDifficulty());
-            customConfig.set( "Arenas." + arena.getName()+ ".round", arena.getMaxRound());
+            customConfig.set( "Arenas." + arena.arenaName+ ".size_x", arena.size_x);
+            customConfig.set( "Arenas." + arena.arenaName+ ".size_z", arena.size_z);
+            //customConfig.set( "Arenas." + arena.arenaName+ ".down_id", arena.getDownId());
+            customConfig.set( "Arenas." + arena.arenaName+ ".show", arena.show);
+            customConfig.set( "Arenas." + arena.arenaName+ ".difficulty", arena.difficulty);
+            customConfig.set( "Arenas." + arena.arenaName+ ".round", arena.maxRound);
             //customConfig.set( "Arenas." + arena.getName()+ ".minPlayers", arena.getMinPlayers());
            // customConfig.set( "Arenas." + arena.getName()+ ".playersForForcestart", arena.getForce());
 
@@ -137,7 +135,7 @@ public class AM {
     
  
     public static void startArenaByName(Player p, String s) {
-        Arena arena = getArena(s);
+        Arena arena = AM.getArena(s);
         arena.ForceStart(p);
     }
 
@@ -150,8 +148,8 @@ public class AM {
     
     
     public static void ResetArena(String s, Player p) {
-        if (getArena(s) != null)  {
-            getArena(s).resetGame();
+        if (AM.getArena(s) != null)  {
+            AM.getArena(s).resetGame();
             p.sendMessage("Arena "+s+" reset succes!");
         }
     }
@@ -162,7 +160,7 @@ public class AM {
             a.resetGame();
             a.ResetFloor();
             if (customConfig.getConfigurationSection("Arenas") != null) {
-                customConfig.set("Arenas." + a.getName(),  null);
+                customConfig.set("Arenas." + arenaName,  null);
                 saveCustomYml(customConfig, customYml);
             }
             MG.arenas.remove(arenaName);
@@ -178,41 +176,20 @@ public class AM {
     }
    
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
 
     
-    public static boolean isInGame(Player p) {
-        return arenas.entrySet().stream().anyMatch((e) -> (e.getValue().IsInGame(p)));
-    }
 
-
-    
-    public static void GlobalPlayerExit(Player p ) {
-        arenas.values().stream().forEach( (a) -> {  a.PlayerExit(p); });
-    }
-
-
-
-    public static Arena getPlayersArena(Player p) {
+    public static Arena getArena(Player p) {
         for (Arena a : arenas.values()) {
-            if (a.IsInGame(p)) return a;
+            if (a.hasPlayer(p)) return a;
         }
         return null;
     }
 
 
     public static void setArenaLobby(Location location, String s) {
-        Arena arena = getArena(s);
-        arena.setLobby(location);
+        Arena arena = AM.getArena(s);
+        arena.arenaLobby = location;
     }
     
 

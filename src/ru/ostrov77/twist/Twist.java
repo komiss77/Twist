@@ -1,8 +1,6 @@
 package ru.ostrov77.twist;
 
-import ru.ostrov77.minigames.UniversalListener;
-import java.util.ArrayList;
-import java.util.Arrays;
+import ru.ostrov77.minigames.MiniGamesLst;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -71,7 +69,6 @@ public class Twist extends JavaPlugin implements Listener {
         instance.getCommand("tw").setExecutor(new TwistCmd());
 
         Bukkit.getServer().getPluginManager().registerEvents(new TwistLst(), this);
-        Bukkit.getServer().getPluginManager().registerEvents(new UniversalListener(this), this);
 
         Bukkit.getLogger().info("Twist ready!");
         
