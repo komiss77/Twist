@@ -12,11 +12,15 @@ import org.bukkit.Sound;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.ItemMergeEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.Vector;
 import ru.komiss77.ApiOstrov;
+import ru.komiss77.Ostrov;
 import ru.komiss77.enums.GameState;
 
 
@@ -41,7 +45,16 @@ public class TwistLst implements Listener {
             }
         }
     }
-
+    
+    
+    @EventHandler (ignoreCancelled = true, priority = EventPriority.HIGH)
+    public void onItemMerge (final ItemMergeEvent e) {
+        Arena a = AM.getArenaByWorld(e.getEntity().getWorld().getName());
+        if (a!=null && a.state != GameState.ОЖИДАНИЕ) {
+             e.setCancelled(true);
+        }
+    }   
+    
     @EventHandler
     public void onEntityDamage(EntityDamageEvent e) {
 
@@ -107,16 +120,9 @@ public class TwistLst implements Listener {
         switch (i.getItemStack().getType()) {
 
             case SUNFLOWER -> {
-                //System.out.println("подобрал бонус level:"+e.getPlayer().getLevel());                    
-                if (i.isGlowing()) {
-                    return;
-                }
+                if (i.isGlowing()) return;
                 i.setVelocity(new Vector(0, 1.0, 0));
-
-                Bukkit.getScheduler().scheduleSyncDelayedTask(Twist.instance, () -> {
-                    i.remove();
-                }, 5L);
-                
+                Ostrov.sync( ()->i.remove(), 5);
                 i.setGlowing(true);
                 i.getWorld().playSound(i.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 10, 1);
                 i.getWorld().playEffect(i.getLocation(), Effect.BOW_FIRE, 5);
@@ -137,27 +143,36 @@ public class TwistLst implements Listener {
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
-        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getArena(e.getPlayer()) == null) {
+        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getArenaByWorld(e.getPlayer().getWorld().getName()) == null) {
             return;
         }
         e.setCancelled(true);
-       /* event.getItemDrop().remove();
-        ItemStack droped = event.getPlayer().getItemInHand().clone();
-        droped.setAmount(1);
-        event.getPlayer().setItemInHand(droped);
-        event.getPlayer().updateInventory();*/
     }
 
 
     @EventHandler
     public void onPlayerSwapoffHand(PlayerSwapHandItemsEvent e) {
-        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getArena(e.getPlayer()) == null) {
+        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getArenaByWorld(e.getPlayer().getWorld().getName()) == null) {
             return;
         }
         e.setCancelled(true);
     }
 
 
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
+    public void onPlace(BlockPlaceEvent e) {
+        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getArenaByWorld(e.getPlayer().getWorld().getName()) == null) {
+            return;
+        }
+        e.setCancelled(true);
+    }
 
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
+    public void onBreak(BlockBreakEvent e) {
+        if (ApiOstrov.isLocalBuilder(e.getPlayer()) || AM.getArenaByWorld(e.getPlayer().getWorld().getName()) == null) {
+            return;
+        }
+        e.setCancelled(true);
+    }
 
 }

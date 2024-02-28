@@ -47,14 +47,14 @@ public class AM {
                              LocationUtil.stringToLoc ( cconf.getString ( name + ".zeropoint" ), false, true ),
                              arenaLobby, 
                              cconf.getString(name + ".mode" ),
-                            (byte) cconf.getInt( name + ".size_x" ),
-                            (byte) cconf.getInt( name + ".size_z" ),
-                            (byte) cconf.getInt( name + ".down_id" ),
-                            (byte) cconf.getInt( name + ".show" ),
-                            (byte) cconf.getInt( name + ".difficulty" ),
-                            (byte) cconf.getInt( name + ".round" ),
-                            (byte) cconf.getInt( name + ".minPlayers" ),
-                            (byte) cconf.getInt( name + ".playersForForcestart" )
+                             cconf.getInt( name + ".size_x" ),
+                             cconf.getInt( name + ".size_z" ),
+                             cconf.getInt( name + ".down_id" ),
+                             cconf.getInt( name + ".show" ),
+                             cconf.getInt( name + ".difficulty" ),
+                             cconf.getInt( name + ".round" ),
+                             cconf.getInt( name + ".minPlayers" ),
+                             cconf.getInt( name + ".playersForForcestart" )
                      );
                     arenas.put(name,arena);
                     MG.arenas.put(name, arena);
@@ -101,7 +101,7 @@ public class AM {
     public static void createArena( String name, Location player_pos, String mode, byte size_x, byte size_z, byte down  ) {
 
                                 // имя  коорд.угла  коорд.лобби   матер.  размер x * z4 id низ  показ   сложность  раунды  мин.игроков  быстр.старт
-        Arena arena = new Arena ( name, player_pos, player_pos,   mode,  size_x, size_z, down,  (byte)0, (byte)0, (byte)0,   (byte)0,    (byte)0 );
+        Arena arena = new Arena ( name, player_pos, player_pos,   mode,  size_x, size_z, down,  0, 0, 0,   0,    0 );
         arenas.put(name,arena);
         MG.arenas.put(name, arena);
     }
@@ -123,9 +123,8 @@ public class AM {
     }
     
 
-    public static Arena getArena(String s) {
-         if (  !arenas.containsKey(s) ) return null;
-         else return arenas.get(s);
+    public static Arena getArena(String arenaName) {
+        return arenas.get(arenaName);
     }
      
      

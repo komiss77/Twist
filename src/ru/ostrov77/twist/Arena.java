@@ -84,8 +84,8 @@ public class Arena implements IArena {
             Location zero,
             Location arenaLobby,
             String material,
-            byte size_x, byte size_z, byte down, byte show,
-            byte difficulty, byte maxRound, byte minPlayers, byte playersForForcestart) {
+            int size_x, int size_z, int down, int show,
+            int difficulty, int maxRound, int minPlayers, int playersForForcestart) {
 
         this.arenaName = name;
         this.arenaLobby = arenaLobby;
@@ -144,7 +144,6 @@ public class Arena implements IArena {
 
     
     public void resetGame() {
-
         if (state==GameState.ОЖИДАНИЕ) return;
         if (task != null) {
             task.cancel();
@@ -155,44 +154,31 @@ public class Arena implements IArena {
         if (RemoveFloor != null) {
             RemoveFloor.cancel();
         }
-
-        arenaLobby.getWorld().getPlayers().stream().forEach( p -> {
-            MG.lobbyJoin(p);
-        });
-
-
         arenaLobby.getWorld().getEntities().stream().forEach( e -> {
-            if (e.getType() != EntityType.PLAYER) {
+            if (e.getType() == EntityType.PLAYER) {
+                MG.lobbyJoin((Player) e);
+            } else {
                 e.remove();
             }
         });
-
         players.clear();
         looser.clear();
-
         round = 1;
-
         cdCounter = 40;
         prestart = 7;
         ending = 10;
         playtime = 0;
-
         GenerateNewFloor();//BackFloor();
-
         nextColor = TCUtils.randomDyeColor();//DyeColor.BLACK;
-
         displayColor = true;
         removeFloor = false;
-
         state = GameState.ОЖИДАНИЕ;
         Twist.sendBsignMysql(arenaName, state.displayColor + state.name(), "", GameState.ОЖИДАНИЕ);
     }
 
     
     public void startCountdown() {                            //ожидание в лобби
-        if (state != GameState.ОЖИДАНИЕ) {
-            return;
-        }
+        if (state != GameState.ОЖИДАНИЕ) return;
         state = GameState.СТАРТ;
 
         task = (new BukkitRunnable() {
@@ -239,15 +225,11 @@ public class Arena implements IArena {
 
     
     public void PrepareToStart() {
-        if (state != GameState.СТАРТ) {
-            return;
-        }
+        if (state != GameState.СТАРТ) return;
         state = GameState.ЭКИПИРОВКА;
-        if (task != null) {
-            task.cancel();
-        }
+        if (task != null)  task.cancel();
 
-        getPlayers().stream().forEach( p -> {  //всех игроков в мире добавля в список и на арену  
+        getPlayers().stream().forEach( p -> {
             p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 5, 1));
             p.getInventory().clear();
             p.teleport(randomFielldLoc());
@@ -286,13 +268,9 @@ public class Arena implements IArena {
     
     
     public void GameProgress() {
-        if (state != GameState.ЭКИПИРОВКА) {
-            return;
-        }
+        if (state != GameState.ЭКИПИРОВКА)  return;
         state = GameState.ИГРА;
-        if (task != null) {
-            task.cancel();
-        }
+        if (task != null)   task.cancel();
 
         Oplayer op;
         final String r = "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound;
@@ -398,9 +376,9 @@ public class Arena implements IArena {
         }
         for (int i = ammount; i < (size_x * size_z / 10); i++) {
             final ItemStack is = new ItemStack(Material.SUNFLOWER, 1);// AM.bonus.clone();
-            final ItemMeta im = is.getItemMeta();
-            im.displayName(Component.text(String.valueOf(random.nextInt(999))));
-            is.setItemMeta(im);
+            //final ItemMeta im = is.getItemMeta();
+            //im.displayName(Component.text(String.valueOf(random.nextInt(999))));
+            //is.setItemMeta(im);
             Item item = arenaLobby.getWorld().dropItem(randomFielldLoc(), is);
             item.setVelocity(new Vector(0, 0, 0));
             item.setPickupDelay(1);
@@ -434,7 +412,10 @@ public class Arena implements IArena {
             p.setLevel(0);
             p.sendMessage(""); 
             p.sendMessage("§bРаунды §7: §b§l"+round+" §eМонеты §7: §e§l"+coin+" §cПадения §7: §c§l"+fall);
-            if (coin>fall) { //coin будет не менее 1!! (изначально fall=0 => 1>0)
+            if (fall>coin) {
+                p.sendMessage("§5§lПадений больше, чем монет, это провал..");
+                p.playSound(p.getEyeLocation(), Sound.ENTITY_EVOKER_PREPARE_SUMMON, 2, 2);
+            } else if (coin>fall) { //coin будет не менее 1!! (изначально fall=0 => 1>0)
                 p.sendMessage("§a§lЗачтена победа!");
                 ApiOstrov.addStat(p, Stat.TW_win);
                 ApiOstrov.addStat(p, Stat.TW_gold, coin);
@@ -442,7 +423,7 @@ public class Arena implements IArena {
                 p.getWorld().playSound(p.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 10, 1);
                 winer.add(p.getName());
             } else {
-                p.sendMessage("§5§lПадений больше, чем монет, это провал..");
+                p.sendMessage("§b§lДля победы нужно собирать монеты.");
                 p.playSound(p.getEyeLocation(), Sound.ENTITY_EVOKER_PREPARE_SUMMON, 2, 2);
             }
             p.sendMessage("");
@@ -721,25 +702,23 @@ public class Arena implements IArena {
     
 // xxxxxxxxxxxxxxxxxxxxxxxxxxx  Обработчик игроков xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     public void addPlayer(Player p) {
-        if (state == GameState.ОЖИДАНИЕ || state == GameState.СТАРТ) {
-            p.teleport(arenaLobby);
-            players.put(p.getName(), 0);
-            if (players.size()==1) {
-                startCountdown();
-            } else {
-                int cd = cdCounter/players.size();
-                if (cd < cdCounter) {
-                   cdCounter = cd;
-                   SendAB("§2§lВремя до старта игры уменьшено!");
-                }
+        p.teleport(arenaLobby);
+        players.put(p.getName(), 0);
+        if (players.size()==1) {
+            startCountdown();
+        } else {
+            int cd = cdCounter/players.size();
+            if (cd < cdCounter) {
+               cdCounter = cd;
+               SendAB("§2§lВремя до старта игры уменьшено!");
             }
-
-            p.getInventory().setItem(0, ItemUtils.air);
-            p.getInventory().setItem(7, ItemUtils.air);
-            MG.leaveArena.giveForce(p);//p.getInventory().setItem(8, UniversalListener.leaveArena.clone());
-            Twist.sendBsignChanel(arenaName, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), GameState.ОЖИДАНИЕ);
-            PM.getOplayer(p).tabSuffix(" §5"+arenaName, p);
         }
+
+        p.getInventory().setItem(0, ItemUtils.air);
+        p.getInventory().setItem(7, ItemUtils.air);
+        MG.leaveArena.giveForce(p);//p.getInventory().setItem(8, UniversalListener.leaveArena.clone());
+        Twist.sendBsignChanel(arenaName, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), GameState.ОЖИДАНИЕ);
+        PM.getOplayer(p).tabSuffix(" §5"+arenaName, p);
     }
 
     public void removePlayer(Player p) {
