@@ -717,6 +717,9 @@ public class Arena implements IArena {
         p.getInventory().setItem(0, ItemUtils.air);
         p.getInventory().setItem(7, ItemUtils.air);
         MG.leaveArena.giveForce(p);//p.getInventory().setItem(8, UniversalListener.leaveArena.clone());
+        if (p.hasPermission("forcestart")) {
+            MG.forceStart.giveForce(p);
+        }
         Twist.sendBsignChanel(arenaName, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), GameState.ОЖИДАНИЕ);
         PM.getOplayer(p).tabSuffix(" §5"+arenaName, p);
     }
@@ -794,12 +797,17 @@ public class Arena implements IArena {
 
     @Override
     public String joinCmd() {
-        return "tw join ";
+        return "tw join "+arenaName;
     }
 
     @Override
     public String leaveCmd() {
         return "tw leave";
+    }
+
+    @Override
+    public String forceStartCmd() {
+        return "tw start "+arenaName;
     }
 
 

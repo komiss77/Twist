@@ -7,7 +7,7 @@ depend: [Ostrov, MiniGames]
 softdepend: [NoteBlockAPI]
 load: POSTWORLD
 commands:
-   tw:
-      description: Main command
    twist:
       description: Main command
+      usage: /twist [action]
+      aliases: [tw]

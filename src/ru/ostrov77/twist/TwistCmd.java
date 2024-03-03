@@ -1,7 +1,6 @@
 package ru.ostrov77.twist;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -17,7 +16,7 @@ import ru.ostrov77.minigames.MG;
 public class TwistCmd implements CommandExecutor, TabCompleter {
 
     private static final String PREF = "tw";
-    public static List<String> subCommands = Arrays.asList("join", "leave", "create", "delete", "list", "reset", "start");
+    public static List<String> subCommands = List.of("join", "leave", "create", "delete", "list", "reset", "start");
 
     @Override
     public List<String> onTabComplete(CommandSender cs, Command cmnd, String command, String[] args) {
