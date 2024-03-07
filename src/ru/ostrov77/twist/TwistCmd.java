@@ -3,12 +3,12 @@ package ru.ostrov77.twist;
 import java.util.ArrayList;
 import java.util.List;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import ru.komiss77.ApiOstrov;
 import ru.komiss77.enums.GameState;
 import ru.ostrov77.minigames.MG;
 
@@ -37,9 +37,9 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                 //1-то,что вводится (обновляется после каждой буквы
 //System.out.println("l="+strings.length+" 0="+strings[0]+" 1="+strings[1]);
                 //if (strings[0].equalsIgnoreCase("build") || strings[0].equalsIgnoreCase("destroy") ) {
-                for (Arena a : AM.arenas.values()) {
-                    sugg.add(a.arenaName);
-                }
+               // for (Arena a : AM.arenas.values()) {
+                    sugg.addAll(AM.arenas.keySet());
+               // }
                 //   sugg.add("loni");
                 //    sugg.add("permission");
                 //   sugg.add("group");
@@ -104,7 +104,7 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
 
             case "create" -> {
                 if (CheckArgs(p, args, 6, true, false)) {
-                    if (!Twist.isNumber(args[3]) || !Twist.isNumber(args[4])) {
+                    if (!ApiOstrov.isInteger(args[3]) || !ApiOstrov.isInteger(args[4])) {
                         p.sendMessage("§c<size_x>, <size_z> must be Integer! Use 0 for default walue!");
                         return false;
                     }
@@ -112,11 +112,11 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                         p.sendMessage("§cIn this world can`t create arena! This world is globall lobby");
                         return false;
                     }
-                    if (!AM.CanCreate((Player) sender)) {
+                    if (!AM.arenasByWorld.containsKey(p.getWorld().getName())) {
                         p.sendMessage("§cIn this world allready exist arena!");
                         return false;
                     }
-                    if (AM.ArenaExist(args[1])) {
+                    if (AM.arenas.containsKey(args[1])) {
                         p.sendMessage("§cArena with this name allready exist!");
                         return false;
                     }
@@ -128,10 +128,10 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                         p.sendMessage("§cArena location(Y) must be lowest, than 250!");
                         return false;
                     }
-                    if (!args[2].equals("clay") && !args[2].equals("glass")) {
-                        args[2] = "wool";
-                        p.sendMessage("§aUse default field material - wool");
-                    }
+                    //if (!args[2].equals("clay") && !args[2].equals("glass")) {
+                    //    args[2] = "wool";
+                    //    p.sendMessage("§aUse default field material - wool");
+                   // }
                     if (args[3].equals("0")) {
                         args[3] = "16";
                         p.sendMessage("§aUse default x-size (16)");
@@ -140,18 +140,18 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                         args[4] = "16";
                         p.sendMessage("§aUse default z-size (16)");
                     }
-                    Material downMat = Material.matchMaterial(args[5]);
-                    if (downMat == null) {
-                        args[5] = Material.GLOWSTONE.name();//"89";
-                        p.sendMessage("§aUse down default material - GLOWSTONE");
-                    }
+                   // Material downMat = Material.matchMaterial(args[5]);
+                   // if (downMat == null) {
+                  //      args[5] = Material.GLOWSTONE.name();//"89";
+                  //      p.sendMessage("§aUse down default material - GLOWSTONE");
+                 //   }
                     //if ( !net.minecraft.world.level.block.Block.a( Integer.valueOf(args[5])).getMaterial().isSolid()  ) {
-                    if (downMat.isSolid()) {
-                        p.sendMessage("§cThe down material must be SOLID!!");
-                        return false;
-                    }
+                   // if (downMat.isSolid()) {
+                   //     p.sendMessage("§cThe down material must be SOLID!!");
+                  //      return false;
+                 //   }
                     p.sendMessage("§eGenerate arena field.. Please, wait..");
-                    AM.createArena(args[1], ((Player) sender).getLocation(), args[2], Byte.valueOf(args[3]), Byte.valueOf(args[4]), Byte.valueOf(args[5]));
+                    AM.createArena(args[1], ((Player) sender).getLocation(), Byte.parseByte(args[3]), Byte.parseByte(args[4]));
                     sender.sendMessage("§fArena §b" + args[1] + " §fcreated! You can save it anytime with command §b/tw saveall");
 
                 } else {
@@ -172,8 +172,8 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
             }
 
             case "list" -> {
-                p.sendMessage("§b§lАрен найдено: " + AM.getAllArenas().size());
-                AM.getAllArenas().entrySet().stream().forEach((e) -> {
+                p.sendMessage("§b§lАрен найдено: " + AM.arenas.size());
+                AM.arenas.entrySet().stream().forEach((e) -> {
                     sender.sendMessage("§e" + e.getKey() + " :§5" + e.getValue().state.name());
                 });
             }
@@ -183,25 +183,26 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                     break;
                 }
                 p.sendMessage("§bTry to reset Arena...");
-                AM.ResetArena(args[1], (Player) sender);
+                AM.getArena(args[1]).resetGame();
             }
 
             case "start" -> {
                 if (!CheckArgs(p, args, 2, false, true)) {
                     break;
                 }
-                AM.startArenaByName(p, args[1]);
+                AM.getArena(args[1]).ForceStart(p);
             }
 
             case "setlobby" -> {
                 if (!CheckArgs(p, args, 2, true, true)) {
                     break;
                 }
-                if (AM.getArena(args[1]).getPlayers().size() > 0) {
+                if (!AM.getArena(args[1]).getPlayers().isEmpty()) {
                     p.sendMessage("§cThat arena has players in it. Please perform reset command before this operation.");
                     return false;
                 }
-                AM.setArenaLobby(((Player) sender).getLocation(), args[1]);
+                AM.arenas.get(args[1]).arenaLobby = ((Player) sender).getLocation();//AM.setArenaLobby(((Player) sender).getLocation(), args[1]);
+                AM.save = true;
                 p.sendMessage("§bSuccessfully set arena lobby!");
             }
 
@@ -209,11 +210,12 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                 if (!CheckArgs(p, args, 3, true, true)) {
                     break;
                 }
-                if (!Twist.isNumber(args[2])) {
+                if (!ApiOstrov.isInteger(args[2])) {
                     p.sendMessage("§c" + args[2] + " must be Integer!");
                     return false;
                 }
                 AM.getArena(args[1]).maxRound = Integer.parseInt(args[2]);
+                AM.save = true;
                 sender.sendMessage("§bSuccessfully set the round count to " + args[2] + "!");
             }
 
@@ -221,11 +223,12 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                 if (!CheckArgs(p, args, 3, true, true)) {
                     break;
                 }
-                if (!Twist.isNumber(args[2])) {
+                if (!ApiOstrov.isInteger(args[2])) {
                     p.sendMessage("§c" + args[2] + " must be Integer!");
                     return false;
                 }
                 AM.getArena(args[1]).difficulty = Integer.parseInt(args[2]);
+                AM.save = true;
                 sender.sendMessage("§bSuccessfully set the Difficulty to " + args[2] + "!");
             }
 
@@ -233,11 +236,12 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
                 if (!CheckArgs(p, args, 3, true, true)) {
                     break;
                 }
-                if (!Twist.isNumber(args[2])) {
+                if (!ApiOstrov.isInteger(args[2])) {
                     p.sendMessage("§c" + args[2] + " must be Integer!");
                     return false;
                 }
                 AM.getArena(args[1]).show = Integer.parseInt(args[2]);
+                AM.save = true;
                 sender.sendMessage("§bSuccessfully set the starting show time to " + args[2] + "!");
             }
 
@@ -270,7 +274,7 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
 
     private static void Help(Player p) {
 
-        p.sendMessage("§a-- " + Twist.Prefix + " §acommands help --");
+        p.sendMessage("§a-- " + TW.Prefix + " §acommands help --");
         p.sendMessage("" + PREF + " join <name>");
         if (p.isOp()) {
             p.sendMessage("" + PREF + " create <name> <mode> <size_x> <size_z> <down_material>");

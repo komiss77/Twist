@@ -32,9 +32,11 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import ru.komiss77.ApiOstrov;
+import ru.komiss77.Ostrov;
 import ru.komiss77.enums.Game;
 import ru.komiss77.enums.GameState;
 import ru.komiss77.enums.Stat;
+import ru.komiss77.modules.games.GM;
 import ru.komiss77.modules.player.Oplayer;
 import ru.komiss77.modules.player.PM;
 import ru.komiss77.scoreboard.SideBar;
@@ -65,7 +67,7 @@ public class Arena implements IArena {
     private final Map<Integer, DyeColor> colormap = new HashMap<>();
 
     private static Random random;
-    public GameState state; //ОЖИДАНИЕ СТАРТ ЭКИПИРОВКА ИГРА ФИНИШ
+    public GameState state = GameState.ВЫКЛЮЧЕНА; //ОЖИДАНИЕ СТАРТ ЭКИПИРОВКА ИГРА ФИНИШ
 
     private final net.minecraft.server.level.WorldServer nmsWorldServer;
     private final net.minecraft.world.level.block.state.IBlockData ibdDataAir;
@@ -83,19 +85,12 @@ public class Arena implements IArena {
     public Arena(String name,
             Location zero,
             Location arenaLobby,
-            String material,
-            int size_x, int size_z, int down, int show,
-            int difficulty, int maxRound, int minPlayers, int playersForForcestart) {
+            int size_x, int size_z, int show,
+            int difficulty, int maxRound) {
 
         this.arenaName = name;
         this.arenaLobby = arenaLobby;
         this.zero = zero;
-
-        //switch (material) {
-        //    case "clay" : mat = Material.WHITE_CONCRETE;  this.mode="clay"; break;
-        //    case "glass": mat = Material.WHITE_STAINED_GLASS; this.mode="glass"; break;
-        //    default     : mat = Material.WHITE_WOOL;          this.mode="wool"; break;
-        // }
         if (size_x >= 2 && size_x <= 64) {
             this.size_x = size_x;
         } else {
@@ -139,7 +134,7 @@ public class Arena implements IArena {
         GenerateNewFloor();
 
         state = GameState.ОЖИДАНИЕ;
-        Twist.sendBsignMysql(name, state.displayColor + state.name(), "", GameState.ОЖИДАНИЕ);
+        Arena.this.sendArenaData();
     }
 
     
@@ -173,7 +168,7 @@ public class Arena implements IArena {
         displayColor = true;
         removeFloor = false;
         state = GameState.ОЖИДАНИЕ;
-        Twist.sendBsignMysql(arenaName, state.displayColor + state.name(), "", GameState.ОЖИДАНИЕ);
+        sendArenaData();
     }
 
     
@@ -192,9 +187,7 @@ public class Arena implements IArena {
 
                 } else if (cdCounter > 0) {
                     --cdCounter;
-                    Twist.sendBsignChanel(arenaName, players.size(),
-                            "§1Твистеры: " + players.size(),
-                            state.displayColor + state.name() + " §4" + cdCounter, GameState.СТАРТ);
+                    sendArenaData();
 
                     Oplayer op;
                     for (Player p : getPlayers()) {
@@ -208,7 +201,7 @@ public class Arena implements IArena {
                 }
 
             }
-        }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
+        }).runTaskTimer(TW.plugin, 0L, 20L);
     }
 
     
@@ -262,7 +255,7 @@ public class Arena implements IArena {
                 }
 
             }
-        }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
+        }).runTaskTimer(TW.plugin, 0L, 20L);
     }
 
     
@@ -326,9 +319,7 @@ public class Arena implements IArena {
                     }
                     MustStayOne();                                              //удаляем все вроме текущего цвета
                     round++;                                                    //эта же функция возвращает новый пол через 3 сек
-                    Twist.sendBsignChanel(arenaName, players.size(),
-                            state.displayColor + state.name(),
-                            "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound, state);
+                    sendArenaData();
                 }
 
                 //тут тикает только во время раундов!!
@@ -349,7 +340,7 @@ public class Arena implements IArena {
                 playtime++;
 
             }
-        }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
+        }).runTaskTimer(TW.plugin, 0L, 20L);
 
     }
 
@@ -448,9 +439,9 @@ public class Arena implements IArena {
                 }
                 --ending;
             }
-        }).runTaskTimer(Twist.GetInstance(), 0L, 20L);
+        }).runTaskTimer(TW.plugin, 0L, 20L);
 
-        Twist.sendBsignChanel(arenaName, players.size(), "§1 - / -", state.displayColor + state.name(), state);
+        sendArenaData();
     }
 
 
@@ -516,7 +507,7 @@ public class Arena implements IArena {
                 }
 
             }
-        }).runTaskTimer(Twist.GetInstance(), 20L, sw);
+        }).runTaskTimer(TW.plugin, 20L, sw);
 
     }
 
@@ -542,7 +533,7 @@ public class Arena implements IArena {
                 displayColor = true;
                 removeFloor = false;
             }
-        }).runTaskLater(Twist.GetInstance(), 60);
+        }).runTaskLater(TW.plugin, 60);
 
     }
 
@@ -720,7 +711,7 @@ public class Arena implements IArena {
         if (p.hasPermission("forcestart")) {
             MG.forceStart.giveForce(p);
         }
-        Twist.sendBsignChanel(arenaName, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), GameState.ОЖИДАНИЕ);
+        sendArenaData();
         PM.getOplayer(p).tabSuffix(" §5"+arenaName, p);
     }
 
@@ -731,7 +722,7 @@ public class Arena implements IArena {
                 if (task!=null) {
                     resetGame();
                 } else {
-                    Twist.sendBsignChanel(arenaName, players.size(), "§1Твистеры: " + players.size(), state.displayColor + state.name(), state);
+                    sendArenaData();
                 }
             } else {
                 Oplayer op;
@@ -739,7 +730,7 @@ public class Arena implements IArena {
                     op = PM.getOplayer(pl);
                     op.score.getSideBar().remove(p.getName());
                 }
-                Twist.sendBsignChanel(arenaName, players.size(), state.displayColor + state.name(), "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound, state);
+                sendArenaData();
             }
         }
 
@@ -765,7 +756,7 @@ public class Arena implements IArena {
     private DyeColor GenRandColor(DyeColor old) {
         DyeColor dc = old;
         for (byte i = 0; i < 15; i++) {                                         //делаем 15 попыток подобрать уникальный цвет
-            dc = Twist.allowedColors.get(random.nextInt(Twist.allowedColors.size() - 1));     //генерируем позицию цвета в списке разрешенных
+            dc = TW.allowedColors.get(random.nextInt(TW.allowedColors.size() - 1));     //генерируем позицию цвета в списке разрешенных
             if (dc != old) {
                 break;   //если старый цвет не совпадает с новым, отдаём
             }
@@ -784,6 +775,19 @@ public class Arena implements IArena {
         }
         return list;
     }
+
+    public void sendArenaData() {
+        GM.sendArenaData(
+                Game.TW, 
+                arenaName, 
+                state, 
+                players.size(), 
+                    "§2§l§oTWIST",
+                "§5"+arenaName, 
+                state.displayColor+state.name(),
+                "§6Игроки: §2"+players.size()
+        );
+    } 
 
     @Override
     public Game game() {
@@ -808,6 +812,16 @@ public class Arena implements IArena {
     @Override
     public String forceStartCmd() {
         return "tw start "+arenaName;
+    }
+
+    @Override
+    public String name() {
+        return arenaName;
+    }
+
+    @Override
+    public GameState state() {
+        return state;
     }
 
 
