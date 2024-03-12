@@ -13,8 +13,11 @@ import ru.komiss77.modules.games.GM;
 public class TW extends JavaPlugin implements Listener {
 
     public static TW plugin;
-    public static String Prefix = "§5Твист: §f";
-    public static boolean noteblock = false;
+    public static String Prefix;
+    
+    static {
+        Prefix = "§2[§bТвист§2] §f";
+    }
 
     public static List<DyeColor> allowedColors = List.of(
             DyeColor.BLACK,
@@ -38,24 +41,13 @@ public class TW extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         plugin = this;
-
-        Prefix = "§2[§bТвист§2] §f";
-
-        if (Bukkit.getPluginManager().isPluginEnabled("NoteBlockAPI")) {
-            noteblock = true;
-            log("NoteBlockAPI found! Enable music for arena. Please, put .nbt songs in plugins/Twist/songs folser!");
-        }
-
         AM.load_arenas();
-
         plugin.getCommand("twist").setExecutor(new TwistCmd());
-
         Bukkit.getServer().getPluginManager().registerEvents(new TwistLst(), this);
-
         Bukkit.getLogger().info("Twist ready!");
-
     }
 
+    
     @Override
     public void onDisable() {
         if (AM.save) {
@@ -76,21 +68,25 @@ public class TW extends JavaPlugin implements Listener {
             );
         });
     }
+    
 
     public static void log(String s) {
         Bukkit.getConsoleSender().sendMessage(Prefix + s);
     }
 
     public static String getTime(final long n) {
-
         final long sec = TimeUnit.SECONDS.toSeconds(n) - TimeUnit.SECONDS.toMinutes(n) * 60L;
         final long min = TimeUnit.SECONDS.toMinutes(n) - TimeUnit.SECONDS.toHours(n) * 60L;
-
         // return  ( n2>0 ? n+":"+n2 : "00:"+n );
         return String.format("%02d", min) + ":" + String.format("%02d", sec);
     }
 
 }
+
+
+
+
+
 
 /*    
     

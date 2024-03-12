@@ -1,5 +1,8 @@
 package ru.ostrov77.twist;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.bukkit.DyeColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -7,7 +10,12 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.Listener;
 import org.bukkit.Effect;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.World;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
 import org.bukkit.event.EventPriority;
@@ -16,23 +24,125 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.ItemMergeEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import ru.komiss77.ApiOstrov;
 import ru.komiss77.Ostrov;
+import ru.komiss77.enums.Game;
 import ru.komiss77.enums.GameState;
+import ru.komiss77.events.FigureActivateEntityEvent;
+import ru.komiss77.events.FigureClickEvent;
+import ru.komiss77.modules.games.GM;
+import ru.komiss77.modules.world.Cuboid;
+import ru.komiss77.objects.Figure;
+import ru.komiss77.utils.TCUtils;
 
 
 public class TwistLst implements Listener {
+    
+    
+    private static Figure figure;
+    private static final Cuboid cuboid;
+    private static BukkitTask task;
+    private static World world;
+    private static final List <Location> locs;
+    private static final List <BlockData> bds;
+    
+    static {
+        cuboid = new Cuboid (2, 2, 2);
+        locs = new ArrayList<>();
+        bds = new ArrayList<>();
+        Material mat;
+        for (DyeColor dc : DyeColor.values()) {
+            mat = TCUtils.changeColor(Material.WHITE_WOOL, dc);
+            bds.add(mat.createBlockData());
+        }
+    }
+    
+    @EventHandler ( priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onFigureActivateEntity (final FigureActivateEntityEvent e) {
+        if (e.getFigure().getTag().equals("twist")) {
+            figure = e.getFigure();
+            world = figure.entity.getWorld();
+            cuboid.allign(figure.spawnLoc);
+            
+            if (task!=null) {
+                task.cancel();
+                task = null;
+                locs.clear();
+            }
+            
+            final Location loc = figure.spawnLoc.clone().subtract(0, 1, 0);
+            locs.add(loc);
+            for (BlockFace bf : BlockFace.values()) {
+                if (bf.getModY()==0) {
+                    locs.add(loc.getBlock().getRelative(bf).getLocation());
+                }
+            }
+            
+            task=new BukkitRunnable() {
+                int s=0;
+                
+                
+                @Override
+                public void run() {
 
-    @EventHandler (priority = EventPriority.MONITOR)
-    public void PlayerQuitEvent (PlayerQuitEvent e) {
-        final Arena a = AM.getArena(e.getPlayer());
-        if (a!=null) {
-            a.removePlayer(e.getPlayer());
+                    if (figure==null || figure.entity == null || figure.entity.isDead() || !figure.entity.isValid()) {
+                        //this.cancel();
+                        //Ostrov.log_err("Пандора: фигура потеряна!");
+                        return;
+                    }
+                    
+                    for (final Player p : world.getPlayers()) {
+                        if (cuboid.contains(p.getLocation())) {
+                            GM.randomPlay(p, Game.TW, Ostrov.MOT_D);
+                            continue;
+                        }
+                        for (final Location l : locs) {
+                            p.sendBlockChange(l, bds.get(Ostrov.random.nextInt(bds.size() - 1)));
+                        }
+                    }
+                    //if (as==null || !as.isValid() || as.isDead()) {
+                   //     //this.cancel();
+                    //    if (tick%200==0) Ostrov.log_warn("Пандора: стойка потеряна!");
+                    //    as = (ArmorStand) figure.getEntity(); //перепроверим на след.тике
+                    //    return;
+                   // }
+                    //if (s%10==0) {
+                        figure.setDisplayName(TCUtils.randomColor() + "ТВИСТ");
+                    //}
+
+                    //if (tick%30==0) {
+                    //    if (helmet==null) {
+                    //        helmet = new ItemStack(head.get(0));
+                    //    }
+                    //    helmet.setType(head.get(ApiOstrov.randInt(0, 15)));
+                    //    as.getEquipment().setHelmet(helmet);
+                    //}
+                    //if (tick%200==0) {
+                    //    Sound sound=Sound.values()[ApiOstrov.randInt(0,  Sound.values().length-1)];
+                   //     if( !sound.toString().startsWith("MUSIC_") ) {
+                    //         as.getWorld().playSound(as.getLocation(), sound, 0.3F, 2);
+                   //     }
+                   // }
+                   s++;
+
+                }
+            }.runTaskTimer(Ostrov.instance, 1, 8);
+                    
         }
     }
 
+    
+    @EventHandler ( priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onFigureClick (final FigureClickEvent e) {
+        if (e.getFigure().getTag().equals("twist")) {
+            e.getPlayer().sendMessage("§bПодходи ближе, поиграем!");
+        }
+    }     
+    
+    
     @EventHandler(priority = EventPriority.HIGH)
     public void EntityDamageByEntityEvent(EntityDamageByEntityEvent e) {
         if (e.getEntityType() == EntityType.PLAYER) {
@@ -56,7 +166,7 @@ public class TwistLst implements Listener {
     
     @EventHandler
     public void onEntityDamage(EntityDamageEvent e) {
-
+        if (e.getEntityType() != EntityType.PLAYER) return;
         final Player p = (Player) e.getEntity();
         final Arena arena = AM.getArena(p);
 
