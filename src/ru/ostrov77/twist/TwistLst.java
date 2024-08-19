@@ -36,7 +36,7 @@ import ru.komiss77.events.FigureClickEvent;
 import ru.komiss77.modules.games.GM;
 import ru.komiss77.modules.world.Cuboid;
 import ru.komiss77.objects.Figure;
-import ru.komiss77.utils.TCUtils;
+import ru.komiss77.utils.TCUtil;
 
 
 public class TwistLst implements Listener {
@@ -55,7 +55,7 @@ public class TwistLst implements Listener {
         bds = new ArrayList<>();
         Material mat;
         for (DyeColor dc : DyeColor.values()) {
-            mat = TCUtils.changeColor(Material.WHITE_WOOL, dc);
+            mat = TCUtil.changeColor(Material.WHITE_WOOL, dc);
             bds.add(mat.createBlockData());
         }
     }
@@ -110,7 +110,7 @@ public class TwistLst implements Listener {
                     //    return;
                    // }
                     //if (s%10==0) {
-                        figure.setDisplayName(TCUtils.randomColor() + "ТВИСТ");
+                        figure.setDisplayName(TCUtil.randomColor() + "ТВИСТ");
                     //}
 
                     //if (tick%30==0) {

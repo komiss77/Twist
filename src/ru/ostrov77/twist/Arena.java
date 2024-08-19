@@ -9,17 +9,12 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import net.kyori.adventure.text.Component;
-import net.minecraft.core.BlockPosition;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.craftbukkit.v1_20_R3.CraftWorld;
-import org.bukkit.craftbukkit.v1_20_R3.block.CraftBlock;
-import org.bukkit.craftbukkit.v1_20_R3.block.data.CraftBlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
@@ -38,11 +33,12 @@ import ru.komiss77.enums.Stat;
 import ru.komiss77.modules.games.GM;
 import ru.komiss77.modules.player.Oplayer;
 import ru.komiss77.modules.player.PM;
+import ru.komiss77.modules.world.WXYZ;
 import ru.komiss77.scoreboard.SideBar;
-import ru.komiss77.utils.DonatEffect;
-import ru.komiss77.utils.ItemUtils;
-import ru.komiss77.utils.ParticlePlay;
-import ru.komiss77.utils.TCUtils;
+import ru.komiss77.utils.*;
+import ru.komiss77.utils.ParticleUtil;
+import ru.komiss77.utils.TCUtil;
+import ru.komiss77.version.Nms;
 import ru.ostrov77.minigames.IArena;
 import ru.ostrov77.minigames.MG;
 
@@ -68,15 +64,16 @@ public class Arena implements IArena {
     private static Random random;
     public GameState state = GameState.ВЫКЛЮЧЕНА; //ОЖИДАНИЕ СТАРТ ЭКИПИРОВКА ИГРА ФИНИШ
 
-    private final net.minecraft.server.level.WorldServer nmsWorldServer;
-    private final net.minecraft.world.level.block.state.IBlockData ibdDataAir;
-    private static final BlockPosition.MutableBlockPosition mutableBlockPosition = new BlockPosition.MutableBlockPosition(0, 0, 0);
+    private final WXYZ wxyz;
+    //private final WorldServer nmsWorldServer;
+    //private final net.minecraft.world.level.block.state.IBlockData ibdDataAir;
+    //private static final BlockPosition.MutableBlockPosition mutableBlockPosition = new BlockPosition.MutableBlockPosition(0, 0, 0);
 
     
     private static final List <PotionEffect> pot = List.of(
             new PotionEffect(PotionEffectType.INVISIBILITY, 60, 10),
-            new PotionEffect(PotionEffectType.CONFUSION, 60, 10),
-            new PotionEffect(PotionEffectType.SLOW, 60, 10)
+            new PotionEffect(PotionEffectType.OOZING, 60, 10),
+            new PotionEffect(PotionEffectType.SLOWNESS, 60, 10)
     );
     
     
@@ -116,20 +113,27 @@ public class Arena implements IArena {
             this.maxRound = 10;
         }
 
-        nmsWorldServer = ((CraftWorld) arenaLobby.getWorld()).getHandle();
-        ibdDataAir = ((CraftBlockData) Material.AIR.createBlockData()).getState();//= net.minecraft.world.level.block.Block.a( 0 );
-
+        //nmsWorldServer = ((CraftWorld) arenaLobby.getWorld()).getHandle();
+        //ibdDataAir = ((CraftBlockData) Material.AIR.createBlockData()).getState();//= net.minecraft.world.level.block.Block.a( 0 );
+        
         cdCounter = 40; //ожид в лобби арены
         prestart = 7; //ожид на арене
         ending = 7; //салюты,награждения
         playtime = 0;
 
         round = 1;
-        nextColor = TCUtils.randomDyeColor();//DyeColor.BLACK;
+        nextColor = TCUtil.randomDyeColor();//DyeColor.BLACK;
         displayColor = true;
         removeFloor = false;
         random = new Random();
 
+        wxyz = new WXYZ(zero);
+        //wxyz.x = zero.getBlockX() + plot_x * 4;  //координата блока Х на углу плота
+        wxyz.y = zero.getBlockY() - 5;           //координата высоты (для пола -5)
+        //wxyz.z = zero.getBlockZ() + plot_z * 4; //координата блока Z на углу плота
+        Nms.setFastMat(wxyz, size_x, 0, size_z, Material.GLOWSTONE);
+        wxyz.y = zero.getBlockY(); //вернуть коорд.Y - в игре она не меняется!
+        
         GenerateNewFloor();
 
         state = GameState.ОЖИДАНИЕ;
@@ -163,7 +167,7 @@ public class Arena implements IArena {
         ending = 10;
         playtime = 0;
         GenerateNewFloor();//BackFloor();
-        nextColor = TCUtils.randomDyeColor();//DyeColor.BLACK;
+        nextColor = TCUtil.randomDyeColor();//DyeColor.BLACK;
         displayColor = true;
         removeFloor = false;
         state = GameState.ОЖИДАНИЕ;
@@ -247,7 +251,7 @@ public class Arena implements IArena {
                     for (Player p : getPlayers()) {
                         op = PM.getOplayer(p);
                         op.score.getSideBar().setTitle("§6До старта: §b"+prestart);
-                        ApiOstrov.sendActionBarDirect(p, "§aТвист заражается... Осталось §b" + prestart + " §aсек.!");
+                        ScreenUtil.sendActionBarDirect(p, "§aТвист заражается... Осталось §b" + prestart + " §aсек.!");
                         p.playSound(p.getEyeLocation(), Sound.BLOCK_AMETHYST_BLOCK_BREAK, 5.0F, 5.0F);
                     }
                     --prestart;
@@ -266,7 +270,7 @@ public class Arena implements IArena {
 
         Oplayer op;
         final String r = "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound;
-        final String nextColorPref = TCUtils.toChat(nextColor);
+        final String nextColorPref = TCUtil.toChat(nextColor);
         for (Player p : getPlayers()) {
             op = PM.getOplayer(p);
             SideBar sb = op.score.getSideBar().setTitle(r);
@@ -274,7 +278,7 @@ public class Arena implements IArena {
                 sb.add(name, nextColorPref+name+" §e0 §f/ §c0");
             }
             sb.build();
-            ApiOstrov.sendActionBarDirect(p, "§6ТВИСТ! §aТВИСТ! §bТВИСТ!");
+            ScreenUtil.sendActionBarDirect(p, "§6ТВИСТ! §aТВИСТ! §bТВИСТ!");
             p.playSound(p.getEyeLocation(), Sound.ENTITY_CAT_AMBIENT, 2, 2);
         }
         
@@ -293,7 +297,7 @@ public class Arena implements IArena {
                     }
                     //showNextColor();                                             //показываем инфо
                     spawnCoin();
-                    final String nextColorPref = TCUtils.toChat(nextColor);
+                    final String nextColorPref = TCUtil.toChat(nextColor);
                     Oplayer op;
                     final String r = "§7Раунд: §b§l" + round + "§7/§b§l" + maxRound;
                     for (Player p : list) {
@@ -350,7 +354,7 @@ public class Arena implements IArena {
             players.replace(p.getName(), players.get(p.getName())+1);
 //Ostrov.log("fall players.get=");
             p.addPotionEffects(pot);
-            ParticlePlay.deathEffect(p, false);
+            ParticleUtil.deathEffect(p, false);
         }
     }
 
@@ -360,7 +364,7 @@ public class Arena implements IArena {
             if (e.getType() != EntityType.PLAYER && e.getTicksLived() > 300) {
                 e.remove();
             }
-            if (e.getType() == EntityType.DROPPED_ITEM) {
+            if (e.getType() == EntityType.ITEM) {
                 ammount++;
             }
         }
@@ -432,7 +436,7 @@ public class Arena implements IArena {
                     for (String name : winer) {
                         p = Bukkit.getPlayerExact(name);
                         if (p!=null) {
-                            DonatEffect.spawnRandomFirework(p.getEyeLocation());
+                            ParticleUtil.spawnRandomFirework(p.getEyeLocation());
                         }
                     }
                 }
@@ -454,11 +458,11 @@ public class Arena implements IArena {
 
         displayColor = false;
         removeFloor = false;
-//Ostrov.log("showNextColor "+nextColor+" "+TCUtils.dyeDisplayName(nextColor));
+//Ostrov.log("showNextColor "+nextColor+" "+TCUtil.dyeDisplayName(nextColor));
         ItemStack item = new ItemStack(mat, 1);
-        item = TCUtils.changeColor(item, nextColor);
+        item = TCUtil.changeColor(item, nextColor);
         ItemMeta m = item.getItemMeta();
-        m.displayName(Component.text(TCUtils.dyeDisplayName(nextColor)));
+        m.displayName(Component.text(TCUtil.dyeDisplayName(nextColor)));
         item.setItemMeta(m);
 
         for (Player p : getPlayers()) {
@@ -484,7 +488,7 @@ public class Arena implements IArena {
 
                 getPlayers().stream().forEach( p -> {
 
-                    p.getInventory().setItem(i, ItemUtils.air);
+                    p.getInventory().setItem(i, ItemUtil.air);
                     p.updateInventory();
 
                     switch (i) {
@@ -560,31 +564,33 @@ public class Arena implements IArena {
     }
 
     private void FillPlotMat(byte plot_x, byte plot_z, DyeColor color) {
-        int x = zero.getBlockX() + plot_x * 4;
-        int y = zero.getBlockY();
-        int z = zero.getBlockZ() + plot_z * 4;
-        mat = TCUtils.changeColor(mat, color);//Material.valueOf(color.toString()+"_"+mat_base);
-        final BlockData data = mat.createBlockData();
-        final net.minecraft.world.level.block.state.IBlockData ibdColoredWool = ((CraftBlockData) data).getState(); //((CraftBlock)block).getNMS();
-        for (byte x_ = 0; x_ < 4; x_++) {
-            for (byte z_ = 0; z_ < 4; z_++) {
-                mutableBlockPosition.d(x + x_, y, z + z_);
-                CraftBlock.setTypeAndData(nmsWorldServer, mutableBlockPosition, ibdDataAir, ibdColoredWool, false);
-            }
-        }
+        wxyz.x = zero.getBlockX() + plot_x * 4;
+        //wxyz.y = zero.getBlockY();
+        wxyz.z = zero.getBlockZ() + plot_z * 4;
+        mat = TCUtil.changeColor(mat, color);//Material.valueOf(color.toString()+"_"+mat_base);
+        Nms.setFastMat(wxyz, 4, 0, 4, mat);
+        //final BlockData data = mat.createBlockData();
+        //final net.minecraft.world.level.block.state.IBlockData ibdColoredWool = ((CraftBlockData) data).getState(); //((CraftBlock)block).getNMS();
+        //for (byte x_ = 0; x_ < 4; x_++) {
+        //    for (byte z_ = 0; z_ < 4; z_++) {
+        //        mutableBlockPosition.d(x + x_, y, z + z_);
+        //        CraftBlock.setTypeAndData(nmsWorldServer, mutableBlockPosition, ibdDataAir, ibdColoredWool, false);
+        //    }
+        //}
     }
 
     private void FillPlotAir(byte plot_x, byte plot_z) {
-        int x = zero.getBlockX() + plot_x * 4;
-        int y = zero.getBlockY();
-        int z = zero.getBlockZ() + plot_z * 4;
-        final net.minecraft.world.level.block.state.IBlockData ibdDataPrevios = nmsWorldServer.a_(mutableBlockPosition);
-        for (byte x_ = 0; x_ < 4; x_++) {
-            for (byte z_ = 0; z_ < 4; z_++) {
-                mutableBlockPosition.d(x + x_, y, z + z_);
-                CraftBlock.setTypeAndData(nmsWorldServer, mutableBlockPosition, ibdDataPrevios, ibdDataAir, false);
-            }
-        }
+        wxyz.x = zero.getBlockX() + plot_x * 4;
+        //wxyz.y = zero.getBlockY();
+        wxyz.z = zero.getBlockZ() + plot_z * 4;
+        Nms.setFastMat(wxyz, 4, 0, 4, mat);
+        //final net.minecraft.world.level.block.state.IBlockData ibdDataPrevios = nmsWorldServer.a_(mutableBlockPosition);
+        //for (byte x_ = 0; x_ < 4; x_++) {
+        //    for (byte z_ = 0; z_ < 4; z_++) {
+        //        mutableBlockPosition.d(x + x_, y, z + z_);
+        //        CraftBlock.setTypeAndData(nmsWorldServer, mutableBlockPosition, ibdDataPrevios, ibdDataAir, false);
+        //    }
+        //}
 
     }
 
@@ -602,7 +608,7 @@ public class Arena implements IArena {
                 colormap.put(x * size_z + z, col);
 //Ostrov.log("generate idx="+(x * size_x + z)+" col="+col);
                 FillPlotMat(x, z, col);  //заполняем плоты случ цветом
-                FillDown(x, z);          //заполняем низ
+                //FillDown(x, z);          //заполняем низ
 
             }
         }
@@ -638,46 +644,50 @@ public class Arena implements IArena {
         for (byte x = 0; x < size_x; x++) {
             for (byte z = 0; z < size_z; z++) {
                 FillPlotAir(x, z);
-                FillDownAir(x, z);
+                //FillDownAir(x, z);
             }
         }
-
+        wxyz.y = zero.getBlockY() - 5;           //координата высоты (для пола -5)
+        Nms.setFastMat(wxyz, size_x, 0, size_z, Material.AIR);
+        wxyz.y = zero.getBlockY(); //вроде арена удаляется и не надо, но на всякий: вернуть коорд.Y - в игре она не меняется!
         colormap.clear();
 
     }
 
-    private void FillDown(byte plot_x, byte plot_z) {
+    //private void FillDown(byte plot_x, byte plot_z) {
 
-        int x = zero.getBlockX() + plot_x * 4;  //координата блока Х на углу плота
-        int y = zero.getBlockY() - 5;           //координата высоты (для пола -5)
-        int z = zero.getBlockZ() + plot_z * 4; //координата блока Z на углу плота
+        //wxyz.x = zero.getBlockX() + plot_x * 4;  //координата блока Х на углу плота
+        //wxyz.y = zero.getBlockY() - 5;           //координата высоты (для пола -5)
+        //wxyz.z = zero.getBlockZ() + plot_z * 4; //координата блока Z на углу плота
+        
+        //Nms.setFastMat(wxyz, 4, 0, 4, Material.GLOWSTONE);
+        
+        //final IBlockData ibdDataDown = ((CraftBlockData) Material.GLOWSTONE.createBlockData()).getState();
+        //final net.minecraft.world.level.block.state.IBlockData ibdDataPrevios = nmsWorldServer.a_(mutableBlockPosition);
 
-        final net.minecraft.world.level.block.state.IBlockData ibdDataDown = ((CraftBlockData) Material.GLOWSTONE.createBlockData()).getState();
-        final net.minecraft.world.level.block.state.IBlockData ibdDataPrevios = nmsWorldServer.a_(mutableBlockPosition);
+        //for (byte x_ = 0; x_ < 4; x_++) {
+        //    for (byte z_ = 0; z_ < 4; z_++) {
+        //        mutableBlockPosition.d(x + x_, y, z + z_);
+        //        CraftBlock.setTypeAndData(nmsWorldServer, mutableBlockPosition, ibdDataPrevios, ibdDataDown, false);
+        //    }
+        //}
 
-        for (byte x_ = 0; x_ < 4; x_++) {
-            for (byte z_ = 0; z_ < 4; z_++) {
-                mutableBlockPosition.d(x + x_, y, z + z_);
-                CraftBlock.setTypeAndData(nmsWorldServer, mutableBlockPosition, ibdDataPrevios, ibdDataDown, false);
-            }
-        }
+    //}
 
-    }
+    //private void FillDownAir(byte plot_x, byte plot_z) {
 
-    private void FillDownAir(byte plot_x, byte plot_z) {
+    //    int x = zero.getBlockX() + plot_x * 4;
+    //    int y = zero.getBlockY() - 5;
+    //    int z = zero.getBlockZ() + plot_z * 4;
 
-        int x = zero.getBlockX() + plot_x * 4;
-        int y = zero.getBlockY() - 5;
-        int z = zero.getBlockZ() + plot_z * 4;
+    //    for (byte x_ = 0; x_ < 4; x_++) {
+    //        for (byte z_ = 0; z_ < 4; z_++) {
+    //            net.minecraft.world.level.chunk.Chunk chunk = nmsWorldServer.d((x + x_) >> 4, (z + z_) >> 4);
+    //            chunk.setBlockState(new net.minecraft.core.BlockPosition((x + x_), y, (z + z_)), ibdDataAir, false, false);                                    //вносит в него ibd по blockposition
+    //        }
+    //    }
 
-        for (byte x_ = 0; x_ < 4; x_++) {
-            for (byte z_ = 0; z_ < 4; z_++) {
-                net.minecraft.world.level.chunk.Chunk chunk = nmsWorldServer.d((x + x_) >> 4, (z + z_) >> 4);
-                chunk.setBlockState(new net.minecraft.core.BlockPosition((x + x_), y, (z + z_)), ibdDataAir, false, false);                                    //вносит в него ibd по blockposition
-            }
-        }
-
-    }
+    //}
 // -----------------------------------------------------------------------------------------
 
     
@@ -704,8 +714,8 @@ public class Arena implements IArena {
             }
         }
 
-        p.getInventory().setItem(0, ItemUtils.air);
-        p.getInventory().setItem(7, ItemUtils.air);
+        p.getInventory().setItem(0, ItemUtil.air);
+        p.getInventory().setItem(7, ItemUtil.air);
         MG.leaveArena.giveForce(p);//p.getInventory().setItem(8, UniversalListener.leaveArena.clone());
         if (p.hasPermission("forcestart")) {
             MG.forceStart.giveForce(p);
@@ -727,7 +737,7 @@ public class Arena implements IArena {
                 Oplayer op;
                 for (Player pl : getPlayers()) {
                     op = PM.getOplayer(pl);
-                    op.score.getSideBar().remove(p.getName());
+                    op.score.getSideBar().reset();
                 }
                 sendArenaData();
             }
@@ -747,7 +757,7 @@ public class Arena implements IArena {
 // -------------------------------  Вспомогательные --------------------------
     public void SendAB(String text) {
         arenaLobby.getWorld().getPlayers().stream().forEach((p) -> {
-            ApiOstrov.sendActionBarDirect(p, text);
+            ScreenUtil.sendActionBarDirect(p, text);
         });
     }
 

@@ -4,21 +4,21 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import ru.komiss77.enums.GameState;
 import ru.komiss77.objects.CaseInsensitiveMap;
-import ru.komiss77.utils.LocationUtil;
-import ru.komiss77.utils.OstrovConfig;
-import ru.komiss77.utils.OstrovConfigManager;
+import ru.komiss77.utils.LocUtil;
+import ru.komiss77.OConfig;
+import ru.komiss77.OConfigManager;
 import ru.ostrov77.minigames.MG;
 
 public class AM {
 
-    public static final OstrovConfigManager manager;
-    private static final OstrovConfig config;
+    public static final OConfigManager manager;
+    private static final OConfig config;
     public static CaseInsensitiveMap<Arena> arenas;
     public static CaseInsensitiveMap<Arena> arenasByWorld;
     public static boolean save;
 
     static {
-        manager = new OstrovConfigManager(TW.plugin);
+        manager = new OConfigManager(TW.plugin);
         config = manager.getNewConfig("config.yml");
         arenas = new CaseInsensitiveMap();
         arenasByWorld = new CaseInsensitiveMap();
@@ -29,11 +29,11 @@ public class AM {
         if (config.getConfigurationSection("arenas") != null) {
             config.getConfigurationSection("arenas").getKeys(false).stream().forEach(arenaName -> {
 
-                final Location arenaLobby = LocationUtil.stringToLoc(config.getString("arenas." + arenaName + ".arenalobby"), true, true);
+                final Location arenaLobby = LocUtil.stringToLoc(config.getString("arenas." + arenaName + ".arenalobby"), true, true);
 
                 Arena arena = new Arena(
                         arenaName,
-                        LocationUtil.stringToLoc(config.getString("arenas." + arenaName + ".zeropoint"), false, true),
+                        LocUtil.stringToLoc(config.getString("arenas." + arenaName + ".zeropoint"), false, true),
                         arenaLobby,
                         config.getInt("arenas." + arenaName + ".size_x"),
                         config.getInt("arenas." + arenaName + ".size_z"),
@@ -57,8 +57,8 @@ public class AM {
 
     public static void saveAll() {
         for (Arena a : AM.arenas.values()) {
-            config.set("arenas." + a.arenaName + ".zeropoint", LocationUtil.toString(a.zero));
-            config.set("arenas." + a.arenaName + ".arenalobby", LocationUtil.toDirString(a.arenaLobby));
+            config.set("arenas." + a.arenaName + ".zeropoint", LocUtil.toString(a.zero));
+            config.set("arenas." + a.arenaName + ".arenalobby", LocUtil.toDirString(a.arenaLobby));
             config.set("arenas." + a.arenaName + ".size_x", a.size_x);
             config.set("arenas." + a.arenaName + ".size_z", a.size_z);
             config.set("arenas." + a.arenaName + ".show", a.show);
