@@ -38,6 +38,7 @@ import ru.komiss77.scoreboard.SideBar;
 import ru.komiss77.utils.*;
 import ru.komiss77.utils.ParticleUtil;
 import ru.komiss77.utils.TCUtil;
+import ru.komiss77.version.GameApi;
 import ru.komiss77.version.Nms;
 import ru.ostrov77.minigames.IArena;
 import ru.ostrov77.minigames.MG;
@@ -131,7 +132,7 @@ public class Arena implements IArena {
         //wxyz.x = zero.getBlockX() + plot_x * 4;  //координата блока Х на углу плота
         wxyz.y = zero.getBlockY() - 5;           //координата высоты (для пола -5)
         //wxyz.z = zero.getBlockZ() + plot_z * 4; //координата блока Z на углу плота
-        Nms.setFastMat(wxyz, size_x, 0, size_z, Material.GLOWSTONE);
+        GameApi.setFastMat(wxyz, size_x, 1, size_z, Material.GLOWSTONE);
         wxyz.y = zero.getBlockY(); //вернуть коорд.Y - в игре она не меняется!
         
         GenerateNewFloor();
@@ -568,7 +569,7 @@ public class Arena implements IArena {
         //wxyz.y = zero.getBlockY();
         wxyz.z = zero.getBlockZ() + plot_z * 4;
         mat = TCUtil.changeColor(mat, color);//Material.valueOf(color.toString()+"_"+mat_base);
-        Nms.setFastMat(wxyz, 4, 0, 4, mat);
+        GameApi.setFastMat(wxyz, 4, 1, 4, mat);
         //final BlockData data = mat.createBlockData();
         //final net.minecraft.world.level.block.state.IBlockData ibdColoredWool = ((CraftBlockData) data).getState(); //((CraftBlock)block).getNMS();
         //for (byte x_ = 0; x_ < 4; x_++) {
@@ -583,7 +584,7 @@ public class Arena implements IArena {
         wxyz.x = zero.getBlockX() + plot_x * 4;
         //wxyz.y = zero.getBlockY();
         wxyz.z = zero.getBlockZ() + plot_z * 4;
-        Nms.setFastMat(wxyz, 4, 0, 4, mat);
+        GameApi.setFastMat(wxyz, 4, 1, 4, Material.AIR);
         //final net.minecraft.world.level.block.state.IBlockData ibdDataPrevios = nmsWorldServer.a_(mutableBlockPosition);
         //for (byte x_ = 0; x_ < 4; x_++) {
         //    for (byte z_ = 0; z_ < 4; z_++) {
@@ -648,7 +649,7 @@ public class Arena implements IArena {
             }
         }
         wxyz.y = zero.getBlockY() - 5;           //координата высоты (для пола -5)
-        Nms.setFastMat(wxyz, size_x, 0, size_z, Material.AIR);
+        GameApi.setFastMat(wxyz, size_x, 1, size_z, Material.AIR);
         wxyz.y = zero.getBlockY(); //вроде арена удаляется и не надо, но на всякий: вернуть коорд.Y - в игре она не меняется!
         colormap.clear();
 
