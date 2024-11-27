@@ -96,10 +96,13 @@ public class TwistCmd implements CommandExecutor, TabCompleter {
 
             case "leave" -> {
                 final Arena a = AM.getArena(p);
-                if (a!=null) {
+                if (a==null) {
+                    p.sendMessage("§5Вы не играете в твист");
+                } else {
                     a.removePlayer(p);
+                    MG.lobbyJoin(p);
+                    p.sendMessage("§5Вы покинули арену "+a.arenaName);
                 }
-                MG.lobbyJoin(p);
             }
 
             case "create" -> {
